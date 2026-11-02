@@ -293,7 +293,7 @@ export function Session() {
               {exam.name}
             </span>
           )}
-          {card.chapterTitle && <span className="chip">{card.chapterTitle}</span>}
+          {card.chapterTitle && <span className="chip wrap">{card.chapterTitle}</span>}
           {isNew && <span className="chip accent">neu</span>}
           {reported.has(card.id) && <span className="chip" style={{ color: 'var(--warn)' }}>gemeldet</span>}
         </div>
