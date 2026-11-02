@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.26.1** – Darstellung beim Lernen: Lange Kapitelnamen über der Frage brechen jetzt um, statt über den Rand der Karte hinauszuragen (auch in der Probeklausur).
 - **1.26.0** – Karten überspringen: In der Lernsitzung nimmt das Symbol ⏭ oben die aktuelle Karte ohne Bewertung heraus. Sie ruht bis zum nächsten Lerntag (auf diesem Gerät), ihr Lernstand bleibt unverändert – praktisch für eine Karte, die heute einfach nicht sitzen will und sonst als letzte immer wiederkommt.
 - **1.25.0** – Zuordnen-Karten: Die Antworten werden bei jeder Abfrage neu gemischt, statt immer in derselben Reihenfolge zu stehen. Eine schon zugeordnete Antwort steht in den übrigen Auswahllisten nicht mehr zur Wahl.
 - **1.24.0** – Lernstand zurücksetzen: Auf der Prüfungsseite unter „Kartenpakete“ → „Zurücksetzen“ gelten alle Karten eines zu früh gelernten Pakets wieder als neu und tauchen nicht mehr in den Wiederholungen auf. Sie kommen wie neue Karten in der Paket-Reihenfolge dran (mit ↓ lässt sich das Paket nach hinten schieben). Bewertungen bleiben für die Statistik erhalten.

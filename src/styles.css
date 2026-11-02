@@ -321,7 +321,10 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
   color: var(--muted);
   white-space: nowrap;
   letter-spacing: -0.01em;
+  max-width: 100%;
 }
+/* Lange Kapiteltitel umbrechen statt über die Karte hinauszuragen */
+.chip.wrap { white-space: normal; border-radius: 12px; }
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
 .chip.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }

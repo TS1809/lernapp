@@ -263,7 +263,7 @@ export function MockExam() {
 
       <article className="card flashcard">
         <div className="meta">
-          {c.chapterTitle && <span className="chip">{c.chapterTitle}</span>}
+          {c.chapterTitle && <span className="chip wrap">{c.chapterTitle}</span>}
           <span className="chip">{itemMinutes(c)} min</span>
         </div>
         <Rich text={c.front} cloze={c.type === 'cloze' ? (reviewing ? 'back' : 'front') : 'none'} />
