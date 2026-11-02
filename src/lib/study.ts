@@ -1,4 +1,4 @@
-import { db, tombstone, uid, type Exam, type Homework, type Mode, type Profile, type ReviewLog, type StudyCard } from './db'
+import { db, tombstone, uid, type Exam, type Homework, type Mode, type Profile, type ReviewLog, type Snapshot, type StudyCard } from './db'
 import { homeworkMinutesToday, sortOpen } from './homework'
 import { DAY, studyDate } from './dates'
 import { planDay, type DayPlan } from './planner'
@@ -8,6 +8,7 @@ import { doneToday, estimateCosts, examStats, packageBlocks, toPlanCard } from '
 import { budgetInfo, type BudgetInfo } from './budget'
 import { rankTasks, type TaskRecommendation } from './tasks'
 import { chapterKey } from './pending'
+import { dayWork } from './dayProgress'
 import { skippedToday } from './skip'
 import { daysUntil } from './dates'
 import type { PlanCard } from './planner'
@@ -127,9 +128,13 @@ export async function undoReview(u: Undo) {
   })
 }
 
-/** Speichert den heutigen Stand jeder Prüfung für den Verlaufsgraphen. */
-export async function updateSnapshots(profile: Profile, exams: Exam[], cards: StudyCard[], now = Date.now()) {
+/**
+ * Speichert den heutigen Stand jeder Prüfung für den Verlaufsgraphen und, mit `plan`, das heutige Pensum für die
+ * Lernserie. Unveränderte Tageswerte werden nicht neu geschrieben (sonst löste jeder Aufruf eine Synchronisation aus).
+ */
+export async function updateSnapshots(profile: Profile, exams: Exam[], cards: StudyCard[], now = Date.now(), plan?: DayPlan) {
   const date = studyDate(now)
+  const work = plan && dayWork(plan)
   const rows = exams
     .filter((e) => e.date >= date)
     .map((e) => {
@@ -139,7 +144,14 @@ export async function updateSnapshots(profile: Profile, exams: Exam[], cards: St
         now,
         profile.retention,
       )
-      return { id: `${e.id}:${date}`, profileId: profile.id, examId: e.id, date, total: st.total, introduced: st.introduced, secure: st.secure }
+      const row: Snapshot = { id: `${e.id}:${date}`, profileId: profile.id, examId: e.id, date, total: st.total, introduced: st.introduced, secure: st.secure }
+      const day = work?.get(e.id)
+      return day ? { ...row, ...day } : row
     })
-  if (rows.length) await db.snapshots.bulkPut(rows)
+  const old = new Map((await db.snapshots.bulkGet(rows.map((r) => r.id))).filter((s) => !!s).map((s) => [s!.id, s!]))
+  const changed = rows.filter((r) => {
+    const o = old.get(r.id)
+    return !o || (Object.keys(r) as (keyof Snapshot)[]).some((k) => o[k] !== r[k])
+  })
+  if (changed.length) await db.snapshots.bulkPut(changed)
 }

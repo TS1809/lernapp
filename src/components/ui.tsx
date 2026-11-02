@@ -138,8 +138,9 @@ export function Rings({ outer, inner, size = 96 }: { outer: number; inner: numbe
 }
 
 /** Mini-Balkendiagramm der letzten Tage. */
-export function DayBars({ values, labels }: { values: number[]; labels: string[] }) {
-  const max = Math.max(1, ...values)
+/** Tagesbalken; ohne `max` relativ zum größten Wert. */
+export function DayBars({ values, labels, max: fixedMax }: { values: number[]; labels: string[]; max?: number }) {
+  const max = fixedMax ?? Math.max(1, ...values)
   return (
     <div className="daybars" aria-hidden="true">
       {values.map((v, i) => (

@@ -221,6 +221,9 @@ export interface Snapshot extends Synced {
   total: number
   introduced: number
   secure: number
+  /** Pflichtpensum des Lerntags (Karten unterwegs): erledigt und noch offen, Stand der letzten Speicherung. */
+  done?: number
+  left?: number
 }
 
 export type ReportCategory = 'fehler' | 'unklar' | 'aufteilen' | 'sonstiges'

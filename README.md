@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.27.0** – Lernserie zeigt das Tagespensum: Ein Balken ist voll, wenn an dem Tag alle eingeplanten Karten (unterwegs) gelernt sind – vorher zeigte er die Zahl der Bewertungen im Verhältnis zum stärksten Tag der Woche. Das Pensum wird dafür je Tag gespeichert und synchronisiert; Tage vor dem Update zeigen noch die alte Darstellung.
 - **1.26.1** – Darstellung beim Lernen: Lange Kapitelnamen über der Frage brechen jetzt um, statt über den Rand der Karte hinauszuragen (auch in der Probeklausur).
 - **1.26.0** – Karten überspringen: In der Lernsitzung nimmt das Symbol ⏭ oben die aktuelle Karte ohne Bewertung heraus. Sie ruht bis zum nächsten Lerntag (auf diesem Gerät), ihr Lernstand bleibt unverändert – praktisch für eine Karte, die heute einfach nicht sitzen will und sonst als letzte immer wiederkommt.
 - **1.25.0** – Zuordnen-Karten: Die Antworten werden bei jeder Abfrage neu gemischt, statt immer in derselben Reihenfolge zu stehen. Eine schon zugeordnete Antwort steht in den übrigen Auswahllisten nicht mehr zur Wahl.

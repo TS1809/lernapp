@@ -17,6 +17,7 @@ import { useSync } from '../sync-state'
 import { BACKUP_REMINDER_DAYS, lastBackup } from '../lib/backup'
 import { db } from '../lib/db'
 import { FSRS_HINT_REVIEWS } from './FsrsSettings'
+import { dayShare, dayWork, weekShares } from '../lib/dayProgress'
 
 export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string; extra: number }> = {
   mobile: { title: 'Unterwegs', unit: 'Karten', one: 'Karte', extra: 10 },
@@ -33,14 +34,17 @@ export function Dashboard() {
   const sync = useSync()
   const data = useLiveQuery(() => loadStudyData(profile), [profile])
   const reviewCount = useLiveQuery(() => db.reviews.where('profileId').equals(profile.id).count(), [profile.id])
+  // Gespeichertes Tagespensum der letzten Woche für die Lernserie
+  const weekStart = isoDate(addDays(studyDayStart(Date.now()), -6))
+  const snapshots = useLiveQuery(() => db.snapshots.where('profileId').equals(profile.id).filter((s) => s.date >= weekStart).toArray(), [profile.id, weekStart])
   const backupAt = useLiveQuery(async () => (await lastBackup(profile.id)) ?? 0, [profile.id])
   const rem = useReminders()
   usePurgeDoneReminders()
 
   useEffect(() => {
-    if (data) updateSnapshots(profile, data.exams, data.cards).catch(() => {})
-    // Einmal pro Aufruf der Seite reicht; der Verlauf speichert einen Wert pro Tag.
-  }, [data === undefined])
+    // Ein Wert pro Tag; nach dem Lernen aktualisiert, damit das Pensum des Tages für die Lernserie stimmt.
+    if (data) updateSnapshots(profile, data.exams, data.cards, Date.now(), data.plan).catch(() => {})
+  }, [data])
 
   if (!data) return null
   const { exams, cards, plan, logs, homework } = data
@@ -88,6 +92,14 @@ export function Dashboard() {
   const today = studyDayStart(now)
   const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
   const counts = week.map((d) => logs.filter((l) => studyDate(l.reviewedAt) === isoDate(d)).length)
+  // Balken: geschaffter Anteil des Tagespensums (voll = alle Karten unterwegs erledigt)
+  const work = [...dayWork(plan).values()]
+  const todayShare = dayShare(
+    work.reduce((s, w) => s + w.done, 0),
+    work.reduce((s, w) => s + w.left, 0),
+    counts[6],
+  )
+  const shares = weekShares(week.map((d) => isoDate(d)), snapshots ?? [], counts, { date: isoDate(today), share: todayShare })
   const dayLabels = week.map((d) => new Date(d).toLocaleDateString('de-DE', { weekday: 'narrow' }))
 
   return (
@@ -323,7 +335,7 @@ export function Dashboard() {
         <Widget size="small" to="/pruefungen" title="Lernserie" icon="flame" tint="var(--hard)">
           <div className="w-number">{days}</div>
           <div className="w-caption">{days === 1 ? 'Tag' : 'Tage'} in Folge</div>
-          <DayBars values={counts} labels={dayLabels} />
+          <DayBars values={shares} labels={dayLabels} max={1} />
         </Widget>
 
         <Widget size="small" to="/import" title="Importieren" icon="download">
