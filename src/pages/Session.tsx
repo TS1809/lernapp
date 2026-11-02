@@ -13,6 +13,7 @@ import { formatInterval } from '../lib/dates'
 import { reportCard } from '../lib/reports'
 import { ReportForm } from '../components/ReportForm'
 import { deleteCard } from '../lib/cards'
+import { skipToday } from '../lib/skip'
 import { checkAnswer, formatAnswer } from '../lib/answers'
 import { SlideViewer } from '../components/SlideViewer'
 import { MatchQuestion, matchScore } from '../components/MatchQuestion'
@@ -155,9 +156,13 @@ export function Session() {
     setReporting(false)
   }
 
-  /** Gemeldete Karte ohne Bewertung aus der Sitzung nehmen – sie ist bis zur Korrektur pausiert. */
+  /**
+   * Karte ohne Bewertung aus der Sitzung nehmen. Gemeldete Karten sind ohnehin bis zur Korrektur pausiert,
+   * andere ruhen bis zum nächsten Lerntag; ihr Lernstand bleibt unverändert.
+   */
   function skipCard() {
     if (!card || !queue || busy) return
+    if (!reported.has(card.id)) skipToday(card.id)
     setQueue(queue.filter((c) => c.id !== card.id))
     resetCardUi()
   }
@@ -212,6 +217,11 @@ export function Session() {
       {card && (
         <button className="btn ghost small" onClick={() => setReporting((r) => !r)} aria-label="Karte melden" aria-pressed={reporting}>
           <Icon name="flag" />
+        </button>
+      )}
+      {card && (
+        <button className="btn ghost small" onClick={skipCard} disabled={busy} aria-label="Karte für heute auslassen" title="Überspringen – die Karte kommt erst morgen wieder">
+          <Icon name="skip" />
         </button>
       )}
       {card && (
