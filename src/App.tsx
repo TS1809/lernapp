@@ -20,6 +20,7 @@ import { SemesterForm } from './pages/SemesterForm'
 import { MockExam } from './pages/MockExam'
 import { FsrsSettings } from './pages/FsrsSettings'
 import { Documents } from './pages/Documents'
+import { Stundenplan } from './pages/Stundenplan'
 import { SyncProvider } from './sync-state'
 import { ErrorBoundary, UpdateBanner } from './components/AppChrome'
 
@@ -76,6 +77,7 @@ function Shell() {
         <Route path="/probeklausur/:id" element={<MockExam />} />
         <Route path="/lernalgorithmus" element={<FsrsSettings />} />
         <Route path="/unterlagen" element={<Documents />} />
+        <Route path="/stundenplan" element={<Stundenplan />} />
         <Route path="/semester/:id" element={<SemesterForm />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>

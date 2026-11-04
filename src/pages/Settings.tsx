@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { budgetInfo, BUDGET_MIN_DAYS, BUDGET_WINDOW_DAYS, type BudgetInfo } from '../lib/budget'
 import { DAY } from '../lib/dates'
 import { Link } from 'react-router-dom'
@@ -9,6 +9,7 @@ import { createTemplate, templateSummary } from '../lib/template'
 import { readJsonFile, safeFileName, saveFile } from '../lib/packages'
 import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
+import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -150,6 +151,9 @@ export function Settings() {
           <small>{profile.fsrsWeights ? 'persönlich angepasst' : 'Standard'} ›</small>
         </Link>
       </div>
+
+      <div className="section-title">Stundenplan & Noten (Test)</div>
+      <StundenplanSection profile={profile} />
 
       <div className="section-title">Semester</div>
       <div className="list">
@@ -339,5 +343,82 @@ function WidgetKey({ profileId }: { profileId: string }) {
       <button className="btn block" onClick={copy}>{state === 'ok' ? 'Widget-Schlüssel kopiert' : 'Widget-Schlüssel kopieren'}</button>
       {state === 'error' && <small className="badge-warn">Kopieren nicht möglich.</small>}
     </details>
+  )
+}
+
+/** Schalter + Zugangsdaten für den Stundenplan/Noten-Bereich (gerätelokal in `meta`). */
+function StundenplanSection({ profile }: { profile: Profile }) {
+  const on = !!profile.stundenplan
+  const cfg = useLiveQuery(() => getConfig(profile.id), [profile.id])
+  const [form, setForm] = useState<StundenplanConfig>({ relayUrl: '', token: '', user: '', pass: '' })
+  const [saved, setSaved] = useState(false)
+  const loaded = useRef(false)
+
+  useEffect(() => {
+    if (cfg && !loaded.current) {
+      setForm(cfg)
+      loaded.current = true
+    }
+  }, [cfg])
+
+  const set = (patch: Partial<StundenplanConfig>) => {
+    setForm((f) => ({ ...f, ...patch }))
+    setSaved(false)
+  }
+
+  async function save() {
+    await setConfig(profile.id, { relayUrl: form.relayUrl.trim(), token: form.token.trim(), user: form.user.trim(), pass: form.pass })
+    setSaved(true)
+  }
+
+  async function remove() {
+    if (!confirm('Zugangsdaten für Stundenplan/Noten von diesem Gerät löschen?')) return
+    await clearConfig(profile.id)
+    setForm({ relayUrl: '', token: '', user: '', pass: '' })
+    loaded.current = true
+    setSaved(false)
+  }
+
+  return (
+    <div className="card stack">
+      <label className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+        <input type="checkbox" checked={on} onChange={(e) => db.profiles.update(profile.id, { stundenplan: e.target.checked })} style={{ marginTop: 3 }} />
+        <span style={{ fontSize: 15 }}>Stundenplan & Noten aus DUALIS anzeigen</span>
+      </label>
+      <small className="muted" style={{ marginTop: -6 }}>
+        Holt Stundenplan und Noten über dein eigenes Relais aus DUALIS. Die Zugangsdaten bleiben nur auf diesem Gerät (nicht in der Dropbox-Synchronisation).
+      </small>
+      {on && (
+        <>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span>Relais-Adresse</span>
+            <input type="url" inputMode="url" autoCapitalize="none" placeholder="https://…workers.dev" value={form.relayUrl} onChange={(e) => set({ relayUrl: e.target.value })} />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span>Zugriffs-Token</span>
+            <input type="text" autoCapitalize="none" autoComplete="off" value={form.token} onChange={(e) => set({ token: e.target.value })} />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span>DUALIS-Benutzer</span>
+            <input type="text" autoCapitalize="none" autoComplete="username" value={form.user} onChange={(e) => set({ user: e.target.value })} />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span>DUALIS-Passwort</span>
+            <input type="password" autoComplete="current-password" value={form.pass} onChange={(e) => set({ pass: e.target.value })} />
+          </label>
+          <small className="muted">Dein Passwort wird nur zum Abruf an dein Relais geschickt und dort nicht gespeichert.</small>
+          <div className="row">
+            <button className="btn primary grow" disabled={!form.relayUrl || !form.token || !form.user || !form.pass} onClick={save}>
+              {saved ? 'Gespeichert ✓' : 'Speichern'}
+            </button>
+            {configReady(cfg) && (
+              <button className="btn danger grow" onClick={remove}>
+                Löschen
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   )
 }

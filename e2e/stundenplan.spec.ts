@@ -1,0 +1,63 @@
+import { expect, test } from '@playwright/test'
+import { collectErrors, onboard } from './helpers'
+
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,OPTIONS' }
+
+test('Stundenplan & Noten: einrichten, Plan und Noten anzeigen', async ({ page, context }) => {
+  const errors = collectErrors(page)
+
+  // Relais simulieren (inkl. CORS-Preflight), damit kein echter DUALIS-Abruf nötig ist.
+  await context.route('https://relais.test/**', (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers: CORS })
+    const url = route.request().url()
+    if (url.includes('/timetable')) {
+      return route.fulfill({
+        headers: CORS,
+        json: {
+          week: '02.11.2026',
+          count: 1,
+          events: [
+            { start: '2026-11-04T09:00', end: '2026-11-04T11:00', weekday: 'Mittwoch', shortName: 'Mathe III', fullName: 'ET2025 Mathematik 3', room: 'HOR-E10', isTest: true, lecturer: 'Prof. Geisel' },
+          ],
+        },
+      })
+    }
+    return route.fulfill({
+      headers: CORS,
+      json: {
+        semesters: [{ semester: 'WiSe 2025/26', modules: [{ code: 'T4EIT1001', name: 'Mathematik I', grade: '2,0', credits: '5,0', status: 'bestanden' }] }],
+      },
+    })
+  })
+
+  await onboard(page)
+
+  // Einrichten unter Einstellungen
+  await page.goto('./#/einstellungen')
+  await page.getByText('Stundenplan & Noten aus DUALIS anzeigen').click()
+  await page.getByLabel('Relais-Adresse').fill('https://relais.test')
+  await page.getByLabel('Zugriffs-Token').fill('tok')
+  await page.getByLabel('DUALIS-Benutzer').fill('e25019')
+  await page.getByLabel('DUALIS-Passwort').fill('geheim')
+  await page.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.getByRole('button', { name: /Gespeichert/ })).toBeVisible()
+
+  // Über die Dashboard-Kachel öffnen
+  await page.goto('./')
+  await page.getByRole('link', { name: 'Stundenplan' }).click()
+
+  // Stundenplan: Termin sichtbar, Detail öffnet mit Dozent
+  await expect(page.getByText('Mathe III')).toBeVisible()
+  await expect(page.getByText(/Prüfung/).first()).toBeVisible()
+  await page.getByText('Mathe III').click()
+  await expect(page.getByText('Prof. Geisel')).toBeVisible()
+  await page.getByRole('button', { name: 'Schließen' }).click()
+
+  // Noten-Tab: Schnitt und Modul
+  await page.getByRole('tab', { name: 'Noten' }).click()
+  await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
+  await expect(page.getByText('Mathematik I')).toBeVisible()
+  await expect(page.getByText('2,0', { exact: true })).toBeVisible()
+
+  expect(errors).toEqual([])
+})

@@ -338,6 +338,13 @@ export function Dashboard() {
           <DayBars values={shares} labels={dayLabels} max={1} />
         </Widget>
 
+        {profile.stundenplan && (
+          <Widget size="small" to="/stundenplan" title="Stundenplan" icon="today">
+            <div className="w-headline">Plan & Noten</div>
+            <div className="w-foot">aus DUALIS</div>
+          </Widget>
+        )}
+
         <Widget size="small" to="/import" title="Importieren" icon="download">
           <div className="w-headline">Karten&shy;paket hinzufügen</div>
           <div className="w-foot">Neu oder Update</div>

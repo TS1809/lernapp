@@ -541,3 +541,42 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .reminder-row.done .reminder-title, .reminder-row.done .dot { opacity: 0.45; }
 .reminder-row.done .reminder-title { text-decoration: line-through; }
 .w-reminders { display: flex; flex-direction: column; margin-bottom: 8px; }
+
+/* Stundenplan & Noten (Test-Feature, profile.stundenplan) */
+.sp-tabs { display: flex; gap: 6px; background: var(--fill); padding: 4px; border-radius: var(--radius-sm); margin-bottom: 14px; }
+.sp-tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 15px; padding: 8px; border-radius: 9px; cursor: pointer; }
+.sp-tabs button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+
+.sp-weeknav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sp-weeklabel { margin-left: auto; font-weight: 600; font-size: 14px; }
+
+.sp-head { display: flex; padding-right: 2px; }
+.sp-head .sp-sp { flex: 0 0 34px; }
+.sp-gh { flex: 1; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 2px 6px; }
+.sp-gh span { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
+.sp-gh.today { color: var(--accent); }
+.sp-body { display: flex; position: relative; background: var(--surface); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden; }
+.sp-gutter { flex: 0 0 34px; position: relative; }
+.sp-hr { position: absolute; right: 5px; font-size: 10px; color: var(--muted); transform: translateY(-50%); }
+.sp-col { flex: 1; position: relative; border-left: 1px solid var(--glass-border); }
+.sp-col.today { background: var(--accent-soft); }
+.sp-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--glass-border); opacity: 0.5; }
+.sp-block { position: absolute; left: 2px; right: 2px; border-radius: 8px; padding: 4px 6px; overflow: hidden; text-align: left; background: var(--surface-2); border: 0; border-left: 3px solid var(--accent); color: var(--text); cursor: pointer; font: inherit; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.sp-block.exam { border-left-color: var(--bad); }
+.sp-bt { color: var(--accent); font-weight: 700; font-size: 10px; line-height: 1.2; }
+.sp-block.exam .sp-bt { color: var(--bad); }
+.sp-bn { font-weight: 700; font-size: 11px; line-height: 1.2; margin-top: 1px; }
+.sp-br { color: var(--muted); font-size: 10px; margin-top: 1px; }
+
+.sp-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.sp-sheet { width: 100%; max-width: 440px; margin: 0; }
+.sp-drow { display: flex; gap: 12px; padding: 8px 0; border-top: 1px solid var(--glass-border); }
+.sp-drow span { color: var(--muted); flex: 0 0 76px; }
+.sp-drow b { min-width: 0; }
+
+.sp-overall { text-align: center; margin-bottom: 16px; }
+.sp-big { font-size: 32px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.sp-avg { background: var(--fill); border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 14px; color: var(--accent); }
+.sp-mod { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--glass-border); }
+.sp-grade { margin-left: auto; font-weight: 800; font-size: 16px; min-width: 42px; text-align: right; }
+.sp-grade.open { color: var(--muted); font-weight: 600; font-size: 13px; }

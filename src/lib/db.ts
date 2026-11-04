@@ -29,6 +29,8 @@ export interface Profile extends Synced {
   ideas?: { id: string; text: string; createdAt: number }[]
   /** Sokratisches Lernen (Test): Leitfragen und Kernpunkte in der Lernsitzung zeigen. Standard: aus. */
   socratic?: boolean
+  /** Stundenplan & Noten aus DUALIS über ein Relais (Test). Standard: aus. Die Zugangsdaten liegen gerätelokal in `meta`, nicht im synchronisierten Profil. */
+  stundenplan?: boolean
 }
 
 export interface Semester extends Synced {
