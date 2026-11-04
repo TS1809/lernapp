@@ -3,11 +3,11 @@ import { collectErrors, onboard } from './helpers'
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,OPTIONS' }
 
-test('Stundenplan & Noten: einrichten, Plan und Noten anzeigen', async ({ page, context }) => {
+test('Stundenplan & Noten: einrichten, Noten und Plan anzeigen', async ({ page, context }) => {
   const errors = collectErrors(page)
 
-  // Relais simulieren (inkl. CORS-Preflight), damit kein echter DUALIS-Abruf nötig ist.
-  await context.route('https://relais.test/**', (route) => {
+  // Fest hinterlegtes Relais simulieren (inkl. CORS-Preflight), damit kein echter DUALIS-Abruf nötig ist.
+  await context.route('https://dualis-relais.e25019.workers.dev/**', (route) => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers: CORS })
     const url = route.request().url()
     if (url.includes('/timetable')) {
@@ -32,11 +32,9 @@ test('Stundenplan & Noten: einrichten, Plan und Noten anzeigen', async ({ page, 
 
   await onboard(page)
 
-  // Einrichten unter Einstellungen
+  // Einrichten unter Einstellungen – nur noch das DUALIS-Login
   await page.goto('./#/einstellungen')
   await page.getByText('Stundenplan & Noten aus DUALIS anzeigen').click()
-  await page.getByLabel('Relais-Adresse').fill('https://relais.test')
-  await page.getByLabel('Zugriffs-Token').fill('tok')
   await page.getByLabel('DUALIS-Benutzer').fill('e25019')
   await page.getByLabel('DUALIS-Passwort').fill('geheim')
   await page.getByRole('button', { name: 'Speichern' }).click()
@@ -46,28 +44,17 @@ test('Stundenplan & Noten: einrichten, Plan und Noten anzeigen', async ({ page, 
   await page.goto('./')
   await page.getByRole('link', { name: 'Stundenplan' }).click()
 
-  // Stundenplan: Termin sichtbar, Detail öffnet mit Dozent
+  // Noten stehen oben: Schnitt und Modul
+  await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
+  await expect(page.getByText('Mathematik I')).toBeVisible()
+  await expect(page.getByText('2,0', { exact: true })).toBeVisible()
+
+  // Stundenplan immer offen darunter: Termin sichtbar, Detail öffnet mit Dozent
   await expect(page.getByText('Mathe III')).toBeVisible()
   await expect(page.getByText(/Prüfung/).first()).toBeVisible()
   await page.getByText('Mathe III').click()
   await expect(page.getByText('Prof. Geisel')).toBeVisible()
   await page.getByRole('button', { name: 'Schließen' }).click()
 
-  // Noten-Tab: Schnitt und Modul
-  await page.getByRole('tab', { name: 'Noten' }).click()
-  await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
-  await expect(page.getByText('Mathematik I')).toBeVisible()
-  await expect(page.getByText('2,0', { exact: true })).toBeVisible()
-
-  expect(errors).toEqual([])
-})
-
-test('Stundenplan: Einrichtungs-Link füllt Relais-Adresse und Token vor', async ({ page }) => {
-  const errors = collectErrors(page)
-  await onboard(page)
-  await page.goto('./?relay=https://relais.test&token=tok')
-  // Landet in den Einstellungen mit vorbelegten Feldern (nur das Login fehlt noch)
-  await expect(page.getByLabel('Relais-Adresse')).toHaveValue('https://relais.test')
-  await expect(page.getByLabel('Zugriffs-Token')).toHaveValue('tok')
   expect(errors).toEqual([])
 })

@@ -6,11 +6,15 @@ import { db } from './db'
  * Zugangsdaten liegen gerätelokal in der `meta`-Tabelle (nicht synchronisiert).
  */
 
+/**
+ * Relais (Cloudflare Worker) und Zugriffs-Token sind fest im Code hinterlegt – die
+ * Nutzer dieses Forks sind vertrauenswürdig und müssen nur noch ihr eigenes
+ * DUALIS-Login eintragen. Das Relais speichert keine Zugangsdaten.
+ */
+export const RELAY_URL = 'https://dualis-relais.e25019.workers.dev'
+export const RELAY_TOKEN = 'bLpTqFeVx8KuD4yWgmn9NvBAY0h3wJ'
+
 export interface StundenplanConfig {
-  /** Basis-Adresse des Relais, z. B. https://dualis-relais.name.workers.dev */
-  relayUrl: string
-  /** Gemeinsames Zugriffs-Token des Relais (RELAY_TOKEN). */
-  token: string
   /** DUALIS-Benutzername (wie beim Login). */
   user: string
   /** DUALIS-Passwort. */
@@ -71,43 +75,12 @@ export async function clearConfig(profileId: string): Promise<void> {
 }
 
 export function configReady(cfg?: StundenplanConfig): cfg is StundenplanConfig {
-  return !!cfg && !!cfg.relayUrl && !!cfg.token && !!cfg.user && !!cfg.pass
-}
-
-/**
- * Einrichtungs-Link: wird die App mit `?relay=…&token=…` geöffnet, übernimmt sie
- * Relais-Adresse und Token (vorhandenes Login bleibt), schaltet den Bereich frei
- * und entfernt die Parameter wieder aus der Adresse. Liefert true, wenn etwas kam.
- */
-export async function applySetupLink(profileId: string): Promise<boolean> {
-  let params: URLSearchParams
-  try {
-    params = new URLSearchParams(location.search)
-  } catch {
-    return false
-  }
-  const relay = params.get('relay')
-  const token = params.get('token')
-  if (!relay && !token) return false
-
-  const existing = (await getConfig(profileId)) ?? { relayUrl: '', token: '', user: '', pass: '' }
-  await setConfig(profileId, { ...existing, relayUrl: relay ?? existing.relayUrl, token: token ?? existing.token })
-  await db.profiles.update(profileId, { stundenplan: true })
-
-  try {
-    params.delete('relay')
-    params.delete('token')
-    const q = params.toString()
-    history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
-  } catch {
-    // Adresse aufräumen ist best effort
-  }
-  return true
+  return !!cfg && !!cfg.user && !!cfg.pass
 }
 
 async function relayFetch<T>(cfg: StundenplanConfig, path: string): Promise<T> {
   const sep = path.includes('?') ? '&' : '?'
-  const url = cfg.relayUrl.replace(/\/+$/, '') + path + sep + 'token=' + encodeURIComponent(cfg.token)
+  const url = RELAY_URL.replace(/\/+$/, '') + path + sep + 'token=' + encodeURIComponent(RELAY_TOKEN)
   const res = await fetch(url, { headers: { 'X-DUALIS-USER': cfg.user, 'X-DUALIS-PASS': cfg.pass } })
   const data = (await res.json()) as T & { error?: string }
   if (data && typeof data === 'object' && 'error' in data && data.error) throw new Error(String(data.error))
@@ -118,8 +91,8 @@ export async function cachedTimetable(profileId: string, iso: string): Promise<C
   return (await db.meta.get(ttKey(profileId, iso)))?.value as CachedTimetable | undefined
 }
 
-export async function refreshTimetable(profileId: string, cfg: StundenplanConfig, iso: string): Promise<CachedTimetable> {
-  const data = await relayFetch<{ week?: string; events?: TimetableEvent[] }>(cfg, `/timetable?from=${iso}`)
+export async function refreshTimetable(profileId: string, cfg: StundenplanConfig, iso: string, noDozent = false): Promise<CachedTimetable> {
+  const data = await relayFetch<{ week?: string; events?: TimetableEvent[] }>(cfg, `/timetable?from=${iso}${noDozent ? '&dozent=0' : ''}`)
   const out: CachedTimetable = { fetchedAt: Date.now(), week: data.week ?? iso, events: data.events ?? [] }
   await db.meta.put({ key: ttKey(profileId, iso), value: out })
   return out

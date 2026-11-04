@@ -350,7 +350,7 @@ function WidgetKey({ profileId }: { profileId: string }) {
 function StundenplanSection({ profile }: { profile: Profile }) {
   const on = !!profile.stundenplan
   const cfg = useLiveQuery(() => getConfig(profile.id), [profile.id])
-  const [form, setForm] = useState<StundenplanConfig>({ relayUrl: '', token: '', user: '', pass: '' })
+  const [form, setForm] = useState<StundenplanConfig>({ user: '', pass: '' })
   const [saved, setSaved] = useState(false)
   const loaded = useRef(false)
 
@@ -367,14 +367,14 @@ function StundenplanSection({ profile }: { profile: Profile }) {
   }
 
   async function save() {
-    await setConfig(profile.id, { relayUrl: form.relayUrl.trim(), token: form.token.trim(), user: form.user.trim(), pass: form.pass })
+    await setConfig(profile.id, { user: form.user.trim(), pass: form.pass })
     setSaved(true)
   }
 
   async function remove() {
     if (!confirm('Zugangsdaten für Stundenplan/Noten von diesem Gerät löschen?')) return
     await clearConfig(profile.id)
-    setForm({ relayUrl: '', token: '', user: '', pass: '' })
+    setForm({ user: '', pass: '' })
     loaded.current = true
     setSaved(false)
   }
@@ -386,18 +386,10 @@ function StundenplanSection({ profile }: { profile: Profile }) {
         <span style={{ fontSize: 15 }}>Stundenplan & Noten aus DUALIS anzeigen</span>
       </label>
       <small className="muted" style={{ marginTop: -6 }}>
-        Holt Stundenplan und Noten über dein eigenes Relais aus DUALIS. Die Zugangsdaten bleiben nur auf diesem Gerät (nicht in der Dropbox-Synchronisation).
+        Holt Stundenplan und Noten aus DUALIS. Trag einfach dein DUALIS-Login ein – alles Weitere ist schon eingerichtet. Die Zugangsdaten bleiben nur auf diesem Gerät (nicht in der Dropbox-Synchronisation).
       </small>
       {on && (
         <>
-          <label className="field" style={{ marginBottom: 0 }}>
-            <span>Relais-Adresse</span>
-            <input type="url" inputMode="url" autoCapitalize="none" placeholder="https://…workers.dev" value={form.relayUrl} onChange={(e) => set({ relayUrl: e.target.value })} />
-          </label>
-          <label className="field" style={{ marginBottom: 0 }}>
-            <span>Zugriffs-Token</span>
-            <input type="text" autoCapitalize="none" autoComplete="off" value={form.token} onChange={(e) => set({ token: e.target.value })} />
-          </label>
           <label className="field" style={{ marginBottom: 0 }}>
             <span>DUALIS-Benutzer</span>
             <input type="text" autoCapitalize="none" autoComplete="username" value={form.user} onChange={(e) => set({ user: e.target.value })} />
@@ -406,9 +398,9 @@ function StundenplanSection({ profile }: { profile: Profile }) {
             <span>DUALIS-Passwort</span>
             <input type="password" autoComplete="current-password" value={form.pass} onChange={(e) => set({ pass: e.target.value })} />
           </label>
-          <small className="muted">Dein Passwort wird nur zum Abruf an dein Relais geschickt und dort nicht gespeichert.</small>
+          <small className="muted">Dein Passwort wird nur zum Abruf deines eigenen Plans geschickt und nirgends gespeichert.</small>
           <div className="row">
-            <button className="btn primary grow" disabled={!form.relayUrl || !form.token || !form.user || !form.pass} onClick={save}>
+            <button className="btn primary grow" disabled={!form.user || !form.pass} onClick={save}>
               {saved ? 'Gespeichert ✓' : 'Speichern'}
             </button>
             {configReady(cfg) && (
