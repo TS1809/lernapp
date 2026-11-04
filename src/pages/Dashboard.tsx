@@ -18,6 +18,7 @@ import { BACKUP_REMINDER_DAYS, lastBackup } from '../lib/backup'
 import { db } from '../lib/db'
 import { FSRS_HINT_REVIEWS } from './FsrsSettings'
 import { dayShare, dayWork, weekShares } from '../lib/dayProgress'
+import { DashboardStundenplan, NotenKachel } from './Stundenplan'
 
 export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string; extra: number }> = {
   mobile: { title: 'Unterwegs', unit: 'Karten', one: 'Karte', extra: 10 },
@@ -338,12 +339,7 @@ export function Dashboard() {
           <DayBars values={shares} labels={dayLabels} max={1} />
         </Widget>
 
-        {profile.stundenplan && (
-          <Widget size="small" to="/stundenplan" title="Stundenplan" icon="today">
-            <div className="w-headline">Plan & Noten</div>
-            <div className="w-foot">aus DUALIS</div>
-          </Widget>
-        )}
+        {profile.stundenplan && <NotenKachel profileId={profile.id} />}
 
         <Widget size="small" to="/import" title="Importieren" icon="download">
           <div className="w-headline">Karten&shy;paket hinzufügen</div>
@@ -353,6 +349,8 @@ export function Dashboard() {
 
       </div>
       </div>
+
+      {profile.stundenplan && <DashboardStundenplan profileId={profile.id} />}
     </>
   )
 }

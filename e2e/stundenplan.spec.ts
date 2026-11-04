@@ -3,7 +3,7 @@ import { collectErrors, onboard } from './helpers'
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,OPTIONS' }
 
-test('Stundenplan & Noten: einrichten, Noten und Plan anzeigen', async ({ page, context }) => {
+test('Stundenplan auf dem Dashboard, Noten als Kachel', async ({ page, context }) => {
   const errors = collectErrors(page)
 
   // Fest hinterlegtes Relais simulieren (inkl. CORS-Preflight), damit kein echter DUALIS-Abruf nötig ist.
@@ -32,7 +32,7 @@ test('Stundenplan & Noten: einrichten, Noten und Plan anzeigen', async ({ page, 
 
   await onboard(page)
 
-  // Einrichten unter Einstellungen – nur noch das DUALIS-Login
+  // Einrichten unter Einstellungen – nur das DUALIS-Login
   await page.goto('./#/einstellungen')
   await page.getByText('Stundenplan & Noten aus DUALIS anzeigen').click()
   await page.getByLabel('DUALIS-Benutzer').fill('e25019')
@@ -40,21 +40,20 @@ test('Stundenplan & Noten: einrichten, Noten und Plan anzeigen', async ({ page, 
   await page.getByRole('button', { name: 'Speichern' }).click()
   await expect(page.getByRole('button', { name: /Gespeichert/ })).toBeVisible()
 
-  // Über die Dashboard-Kachel öffnen
+  // Dashboard: Stundenplan steht ohne Klick unter den Kacheln
   await page.goto('./')
-  await page.getByRole('link', { name: 'Stundenplan' }).click()
-
-  // Noten stehen oben: Schnitt und Modul
-  await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
-  await expect(page.getByText('Mathematik I')).toBeVisible()
-  await expect(page.getByText('2,0', { exact: true })).toBeVisible()
-
-  // Stundenplan immer offen darunter: Termin sichtbar, Detail öffnet mit Dozent
   await expect(page.getByText('Mathe III')).toBeVisible()
   await expect(page.getByText(/Prüfung/).first()).toBeVisible()
+  // Termin anklickbar: Detail mit Dozent
   await page.getByText('Mathe III').click()
   await expect(page.getByText('Prof. Geisel')).toBeVisible()
   await page.getByRole('button', { name: 'Schließen' }).click()
+
+  // Noten-Kachel führt auf die Noten-Seite
+  await page.getByRole('link', { name: 'Noten' }).click()
+  await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
+  await expect(page.getByText('Mathematik I')).toBeVisible()
+  await expect(page.getByText('2,0', { exact: true })).toBeVisible()
 
   expect(errors).toEqual([])
 })

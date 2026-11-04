@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { useActive } from '../state'
-import { PageHeader } from '../components/ui'
+import { PageHeader, Widget } from '../components/ui'
 import {
   addDays,
   average,
@@ -38,17 +38,20 @@ const clock = (t: number) => {
   return `${two(d.getHours())}:${two(d.getMinutes())}`
 }
 
-export function Stundenplan() {
+/* ------------------------------------------------- Noten als eigene Seite ---- */
+
+/** Zielseite der Noten-Kachel: Gesamtschnitt und alle Semester. */
+export function Noten() {
   const { profile } = useActive()
   const cfg = useLiveQuery(() => getConfig(profile.id), [profile.id])
 
   if (!configReady(cfg)) {
     return (
       <>
-        <PageHeader back title="Stundenplan & Noten" />
+        <PageHeader back title="Noten" />
         <div className="card stack">
           <p className="muted" style={{ margin: 0 }}>
-            Hier erscheinen deine Noten und dein Stundenplan aus DUALIS. Dafür musst du einmal dein DUALIS-Login hinterlegen.
+            Hier erscheinen deine Noten aus DUALIS. Dafür musst du einmal dein DUALIS-Login hinterlegen.
           </p>
           <Link className="btn primary block" to="/einstellungen">In den Einstellungen einrichten</Link>
         </div>
@@ -56,18 +59,70 @@ export function Stundenplan() {
     )
   }
 
-  // Noten oben, Stundenplan immer offen ganz unten.
   return (
     <>
-      <PageHeader back title="Stundenplan & Noten" />
+      <PageHeader back title="Noten" />
       <div className="sp-app">
         <NotenView profileId={profile.id} cfg={cfg} />
-        <div className="sp-sectitle">Stundenplan</div>
-        <PlanView profileId={profile.id} cfg={cfg} />
       </div>
     </>
   )
 }
+
+/* ------------------------------------------------- Dashboard-Bausteine ---- */
+
+function gradesAverage(g?: CachedGrades | null): number | null {
+  return g ? average(g.semesters.flatMap((s) => s.modules)) : null
+}
+
+/** Noten-Kachel fürs Dashboard: zeigt den Gesamtschnitt, führt zur Noten-Seite. */
+export function NotenKachel({ profileId }: { profileId: string }) {
+  const cfg = useLiveQuery(() => getConfig(profileId), [profileId])
+  const cached = useLiveQuery(() => cachedGrades(profileId), [profileId])
+
+  useEffect(() => {
+    if (!configReady(cfg)) return
+    refreshGrades(profileId, cfg).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId, cfg?.user, cfg?.pass])
+
+  return (
+    <Widget size="small" to="/noten" title="Noten" icon="chart">
+      {configReady(cfg) ? (
+        <>
+          <div className="w-number">{fmtGrade(gradesAverage(cached))}</div>
+          <div className="w-caption">Notenschnitt</div>
+        </>
+      ) : (
+        <div className="w-headline">Einrichten</div>
+      )}
+      <div className="w-foot">aus DUALIS</div>
+    </Widget>
+  )
+}
+
+/** Stundenplan, der unter allen Kacheln dauerhaft offen auf dem Dashboard steht. */
+export function DashboardStundenplan({ profileId }: { profileId: string }) {
+  const cfg = useLiveQuery(() => getConfig(profileId), [profileId])
+
+  if (!configReady(cfg)) {
+    return (
+      <div className="sp-app sp-dash">
+        <div className="sp-sectitle">Stundenplan</div>
+        <Link to="/einstellungen" className="sp-setuplink">DUALIS-Login hinterlegen, um den Plan zu sehen →</Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="sp-app sp-dash">
+      <div className="sp-sectitle">Stundenplan</div>
+      <PlanView profileId={profileId} cfg={cfg} />
+    </div>
+  )
+}
+
+/* ------------------------------------------------- Wochenplan ---- */
 
 function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfig }) {
   const [monday, setMonday] = useState(() => mondayOf(new Date()))
@@ -253,6 +308,8 @@ function DetailBody({ ev }: { ev: TimetableEvent }) {
     </>
   )
 }
+
+/* ------------------------------------------------- Noten-Ansicht ---- */
 
 function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfig }) {
   const [data, setData] = useState<CachedGrades | null>(null)

@@ -548,9 +548,11 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .sp-app {
   --sp-bg: #0f1115; --sp-card: #1a1d24; --sp-card2: #20242d; --sp-line: #2b2f3a;
   --sp-fg: #e8eaed; --sp-muted: #9aa0ac; --sp-accent: #4f9cff; --sp-exam: #ff6b6b;
-  background: var(--sp-bg); color: var(--sp-fg); border-radius: 16px; padding: 12px; margin-top: 4px;
+  background: var(--sp-bg); color: var(--sp-fg); border-radius: 16px; padding: 12px; max-width: 760px; margin: 4px auto 0;
 }
-.sp-sectitle { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-muted); margin: 20px 2px 10px; }
+.sp-dash { margin-top: 16px; }
+.sp-sectitle { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-muted); margin: 2px 2px 10px; }
+.sp-setuplink { display: inline-block; color: var(--sp-accent); font-size: 14px; padding: 2px 0; text-decoration: none; }
 .sp-viewplan { position: relative; display: block; }
 
 .sp-weeknav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
