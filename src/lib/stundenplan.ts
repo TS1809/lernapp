@@ -74,6 +74,37 @@ export function configReady(cfg?: StundenplanConfig): cfg is StundenplanConfig {
   return !!cfg && !!cfg.relayUrl && !!cfg.token && !!cfg.user && !!cfg.pass
 }
 
+/**
+ * Einrichtungs-Link: wird die App mit `?relay=…&token=…` geöffnet, übernimmt sie
+ * Relais-Adresse und Token (vorhandenes Login bleibt), schaltet den Bereich frei
+ * und entfernt die Parameter wieder aus der Adresse. Liefert true, wenn etwas kam.
+ */
+export async function applySetupLink(profileId: string): Promise<boolean> {
+  let params: URLSearchParams
+  try {
+    params = new URLSearchParams(location.search)
+  } catch {
+    return false
+  }
+  const relay = params.get('relay')
+  const token = params.get('token')
+  if (!relay && !token) return false
+
+  const existing = (await getConfig(profileId)) ?? { relayUrl: '', token: '', user: '', pass: '' }
+  await setConfig(profileId, { ...existing, relayUrl: relay ?? existing.relayUrl, token: token ?? existing.token })
+  await db.profiles.update(profileId, { stundenplan: true })
+
+  try {
+    params.delete('relay')
+    params.delete('token')
+    const q = params.toString()
+    history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
+  } catch {
+    // Adresse aufräumen ist best effort
+  }
+  return true
+}
+
 async function relayFetch<T>(cfg: StundenplanConfig, path: string): Promise<T> {
   const sep = path.includes('?') ? '&' : '?'
   const url = cfg.relayUrl.replace(/\/+$/, '') + path + sep + 'token=' + encodeURIComponent(cfg.token)

@@ -61,3 +61,13 @@ test('Stundenplan & Noten: einrichten, Plan und Noten anzeigen', async ({ page, 
 
   expect(errors).toEqual([])
 })
+
+test('Stundenplan: Einrichtungs-Link füllt Relais-Adresse und Token vor', async ({ page }) => {
+  const errors = collectErrors(page)
+  await onboard(page)
+  await page.goto('./?relay=https://relais.test&token=tok')
+  // Landet in den Einstellungen mit vorbelegten Feldern (nur das Login fehlt noch)
+  await expect(page.getByLabel('Relais-Adresse')).toHaveValue('https://relais.test')
+  await expect(page.getByLabel('Zugriffs-Token')).toHaveValue('tok')
+  expect(errors).toEqual([])
+})

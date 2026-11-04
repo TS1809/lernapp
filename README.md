@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.28.1** – Stundenplan & Noten: Einrichtungs-Link. Wird die App mit `?relay=…&token=…` geöffnet, übernimmt sie Relais-Adresse und Zugriffs-Token automatisch, schaltet den Bereich frei und räumt die Parameter wieder aus der Adresse – so muss man nur noch sein DUALIS-Login eintragen. Praktisch zum Teilen mit Kommilitonen desselben Kurses.
 - **1.28.0** – Stundenplan & Noten (Test, Standard aus): Unter „Einstellungen → Stundenplan & Noten“ aktivierbar. Holt über ein eigenes Relais (Cloudflare Worker) den Wochen-Stundenplan (Arbeitswoche mit Zeitachse, Prüfungen hervorgehoben, Raum und Dozent) sowie die Noten (mit nach Credits gewichtetem Schnitt) aus DUALIS und zeigt sie als eigenen Bereich mit Dashboard-Kachel. Zugangsdaten bleiben gerätelokal (nicht in der Synchronisation).
 - **1.27.0** – Lernserie zeigt das Tagespensum: Ein Balken ist voll, wenn an dem Tag alle eingeplanten Karten (unterwegs) gelernt sind – vorher zeigte er die Zahl der Bewertungen im Verhältnis zum stärksten Tag der Woche. Das Pensum wird dafür je Tag gespeichert und synchronisiert; Tage vor dem Update zeigen noch die alte Darstellung.
 - **1.26.1** – Darstellung beim Lernen: Lange Kapitelnamen über der Frage brechen jetzt um, statt über den Rand der Karte hinauszuragen (auch in der Probeklausur).

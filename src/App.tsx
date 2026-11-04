@@ -1,4 +1,5 @@
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AppStateProvider, useAppState } from './state'
 import { Onboarding } from './pages/Onboarding'
 import { Dashboard } from './pages/Dashboard'
@@ -21,6 +22,7 @@ import { MockExam } from './pages/MockExam'
 import { FsrsSettings } from './pages/FsrsSettings'
 import { Documents } from './pages/Documents'
 import { Stundenplan } from './pages/Stundenplan'
+import { applySetupLink } from './lib/stundenplan'
 import { SyncProvider } from './sync-state'
 import { ErrorBoundary, UpdateBanner } from './components/AppChrome'
 
@@ -28,6 +30,20 @@ import { ErrorBoundary, UpdateBanner } from './components/AppChrome'
 function SessionRoute() {
   const location = useLocation()
   return <Session key={location.key} />
+}
+
+/** Übernimmt Relais-Adresse und Token aus einem Einrichtungs-Link (?relay&token). */
+function SetupLink() {
+  const { profile } = useAppState()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!profile) return
+    applySetupLink(profile.id).then((applied) => {
+      if (applied) navigate('/einstellungen')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
+  return null
 }
 
 function Shell() {
@@ -52,6 +68,7 @@ function Shell() {
   return (
     <main className={pathname === '/' || /^\/pruefung\/(?!neu$)[^/]+$/.test(pathname) ? 'main wide' : 'main'}>
       <UpdateBanner />
+      <SetupLink />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/lernen/:mode" element={<SessionRoute />} />
