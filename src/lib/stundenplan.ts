@@ -216,3 +216,15 @@ export async function importExamsFromTimetable(profileId: string, semesterId: st
   if (added.length) await db.profiles.update(profileId, { dualisExamKeys: [...known] })
   return added.length
 }
+
+/**
+ * Übernimmt Klausuren aus allen bereits gespeicherten Stundenplan-Wochen. Läuft auch
+ * ohne frischen Abruf – nützlich, wenn das Relais gerade nicht erreichbar ist, die Wochen
+ * aber früher schon einmal geladen (und zwischengespeichert) wurden.
+ */
+export async function importExamsFromCache(profileId: string, semesterId: string): Promise<number> {
+  const prefix = `stundenplan:tt:${profileId}:`
+  const rows = await db.meta.where('key').startsWith(prefix).toArray()
+  const events = rows.flatMap((r) => (r.value as CachedTimetable | undefined)?.events ?? [])
+  return importExamsFromTimetable(profileId, semesterId, events)
+}

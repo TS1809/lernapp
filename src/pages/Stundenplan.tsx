@@ -13,6 +13,7 @@ import {
   getConfig,
   gradeNum,
   hhmm,
+  importExamsFromCache,
   importExamsFromTimetable,
   isoOf,
   minutesOf,
@@ -190,6 +191,12 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
       cancelled = true
     }
   }, [profileId, semesterId, cfg.user, cfg.pass])
+
+  // Prüfungen auch aus bereits gespeicherten Wochen übernehmen – unabhängig davon, ob
+  // der aktuelle Abruf klappt (z. B. wenn das Relais im Firmennetz blockiert ist).
+  useEffect(() => {
+    importExamsFromCache(profileId, semesterId).catch(() => {})
+  }, [profileId, semesterId])
 
   function open(e: TimetableEvent) {
     setDetail(e)
