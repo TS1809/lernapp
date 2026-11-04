@@ -10,6 +10,7 @@ import { readJsonFile, safeFileName, saveFile } from '../lib/packages'
 import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
+import { disablePush, enablePush, pushEnabled, pushSupported, sendPushTest } from '../lib/push'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -409,8 +410,84 @@ function StundenplanSection({ profile }: { profile: Profile }) {
               </button>
             )}
           </div>
+          {configReady(cfg) && (
+            <>
+              <div className="section-title" style={{ marginTop: 6 }}>Benachrichtigungen</div>
+              <PushToggle cfg={cfg} />
+            </>
+          )}
         </>
       )}
+    </div>
+  )
+}
+
+/** Push-Benachrichtigungen bei Stundenplan-Änderungen ein-/ausschalten (siehe lib/push.ts). */
+function PushToggle({ cfg }: { cfg: StundenplanConfig }) {
+  const [on, setOn] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const supported = pushSupported()
+
+  useEffect(() => {
+    pushEnabled().then(setOn)
+  }, [])
+
+  async function toggle() {
+    setBusy(true)
+    setMsg('')
+    try {
+      if (on) {
+        await disablePush(cfg)
+        setOn(false)
+      } else {
+        await enablePush(cfg)
+        setOn(true)
+        setMsg('Eingeschaltet – das Relais meldet sich, wenn sich etwas ändert.')
+      }
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function test() {
+    setBusy(true)
+    setMsg('')
+    try {
+      await sendPushTest(cfg)
+      setMsg('Testbenachrichtigung gesendet – sie sollte gleich erscheinen.')
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!supported) {
+    return (
+      <small className="muted">
+        Auf diesem Gerät nicht verfügbar. Auf dem iPhone die App zuerst über „Teilen → Zum Home-Bildschirm“ installieren, dann hier einschalten.
+      </small>
+    )
+  }
+
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <label className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+        <input type="checkbox" checked={on} disabled={busy} onChange={toggle} style={{ marginTop: 3 }} />
+        <span style={{ fontSize: 15 }}>Bei Stundenplan-Änderungen benachrichtigen</span>
+      </label>
+      <small className="muted" style={{ marginTop: -4 }}>
+        Das Relais prüft dafür regelmäßig deinen Plan und speichert dazu dein DUALIS-Login. Die Mitteilung kommt auch, wenn die App geschlossen ist.
+      </small>
+      {on && (
+        <button className="btn small" disabled={busy} onClick={test} style={{ alignSelf: 'flex-start' }}>
+          Testbenachrichtigung senden
+        </button>
+      )}
+      {msg && <small className={/fehl|nicht|keine|erlaubt/i.test(msg) ? 'badge-warn' : 'muted'}>{msg}</small>}
     </div>
   )
 }

@@ -40,6 +40,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,json}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Push-Handler (Stundenplan-Änderungen) an denselben Service Worker hängen.
+        importScripts: ['push-sw.js'],
       },
     }),
   ],
