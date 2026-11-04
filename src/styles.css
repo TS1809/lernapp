@@ -543,65 +543,66 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .w-reminders { display: flex; flex-direction: column; margin-bottom: 8px; }
 
 /* Stundenplan & Noten (Test-Feature, profile.stundenplan).
-   Eigenständiges Panel exakt wie die DUALIS-Vorschau (/app) – feste dunkle Farben,
-   unabhängig vom App-Thema, damit Plan und Noten überall gleich aussehen. */
-.sp-app {
-  --sp-bg: #0f1115; --sp-card: #1a1d24; --sp-card2: #20242d; --sp-line: #2b2f3a;
-  --sp-fg: #e8eaed; --sp-muted: #9aa0ac; --sp-accent: #4f9cff; --sp-exam: #ff6b6b;
-  background: var(--sp-bg); color: var(--sp-fg); border-radius: 16px; padding: 12px; max-width: 760px; margin: 4px auto 0;
+   Folgt dem App-Thema (hell/dunkel) und übernimmt den Glas-Karten-Look der Übersicht. */
+.sp-app { max-width: 760px; margin: 0 auto; color: var(--text); }
+/* Auf dem Dashboard ein vollwertiges Glas-Panel in Kachelbreite, kein aufgesetzter Kasten. */
+.sp-dash {
+  max-width: none; margin-top: 18px; padding: 16px; border-radius: 26px;
+  background: var(--glass); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
 }
-.sp-dash { margin-top: 16px; }
-.sp-sectitle { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sp-muted); margin: 2px 2px 10px; }
-.sp-setuplink { display: inline-block; color: var(--sp-accent); font-size: 14px; padding: 2px 0; text-decoration: none; }
+.sp-sectitle { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin: 2px 2px 12px; }
+.sp-setuplink { display: inline-block; color: var(--accent); font-size: 14px; padding: 2px 0; text-decoration: none; }
 .sp-viewplan { position: relative; display: block; }
 
 .sp-weeknav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.sp-weeknav button { background: var(--sp-card); color: var(--sp-fg); border: 1px solid var(--sp-line); border-radius: 10px; padding: 8px 13px; font-size: 16px; font-weight: 600; cursor: pointer; }
-.sp-weeklabel { margin-left: auto; color: var(--sp-fg); font-size: 14px; font-weight: 600; }
+.sp-weeknav button { background: var(--fill); color: var(--text); border: 1px solid var(--separator); border-radius: 10px; padding: 8px 13px; font-size: 16px; font-weight: 600; cursor: pointer; }
+.sp-weeknav button:active { transform: scale(0.96); }
+.sp-weeklabel { margin-left: auto; color: var(--text); font-size: 14px; font-weight: 600; }
 
 .sp-calhead { display: flex; padding-right: 3px; }
 .sp-calhead .sp-sp { flex: 0 0 34px; }
-.sp-ghead { flex: 1; text-align: center; padding: 2px 2px 6px; font-size: 12px; font-weight: 700; color: var(--sp-muted); }
-.sp-ghead span { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
-.sp-ghead.today { color: var(--sp-accent); }
-.sp-calbody { display: flex; position: relative; background: var(--sp-card); border: 1px solid var(--sp-line); border-radius: 12px; overflow: hidden; }
+.sp-ghead { flex: 1; text-align: center; padding: 2px 2px 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.sp-ghead span { display: block; font-size: 11px; font-weight: 600; opacity: 0.85; }
+.sp-ghead.today { color: var(--accent); }
+.sp-calbody { display: flex; position: relative; background: var(--surface-2); border: 1px solid var(--separator); border-radius: var(--radius-sm); overflow: hidden; }
 .sp-gutter { flex: 0 0 34px; position: relative; }
-.sp-hr { position: absolute; right: 5px; font-size: 10px; color: var(--sp-muted); transform: translateY(-50%); }
-.sp-daycol { flex: 1; position: relative; border-left: 1px solid var(--sp-line); }
-.sp-daycol.todaycol { background: rgba(79, 156, 255, 0.06); }
-.sp-hline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--sp-line); opacity: 0.3; }
-.sp-block { position: absolute; left: 2px; right: 2px; border-radius: 8px; padding: 4px 6px; overflow: hidden; text-align: left; background: #263243; border: 0; border-left: 3px solid var(--sp-accent); color: var(--sp-fg); cursor: pointer; font: inherit; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
-.sp-block.exam { border-left-color: var(--sp-exam); background: #3a2630; }
-.sp-bt { color: #8fc0ff; font-weight: 700; font-size: 10px; line-height: 1.2; }
-.sp-block.exam .sp-bt { color: #ff9a9a; }
+.sp-hr { position: absolute; right: 5px; font-size: 10px; color: var(--muted); transform: translateY(-50%); }
+.sp-daycol { flex: 1; position: relative; border-left: 1px solid var(--separator); }
+.sp-daycol.todaycol { background: var(--accent-soft); }
+.sp-hline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--separator); opacity: 0.6; }
+.sp-block { position: absolute; left: 2px; right: 2px; border-radius: 8px; padding: 4px 6px; overflow: hidden; text-align: left; background: var(--accent-soft); border: 0; border-left: 3px solid var(--accent); color: var(--text); cursor: pointer; font: inherit; }
+.sp-block.exam { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.sp-bt { color: var(--accent); font-weight: 700; font-size: 10px; line-height: 1.2; }
+.sp-block.exam .sp-bt { color: var(--bad); }
 .sp-bn { font-weight: 700; font-size: 11px; line-height: 1.2; margin-top: 1px; }
-.sp-br { color: var(--sp-muted); font-size: 10px; margin-top: 1px; }
+.sp-br { color: var(--muted); font-size: 10px; margin-top: 1px; }
 
-.sp-empty { color: var(--sp-muted); text-align: center; padding: 24px 10px; }
-.sp-status { text-align: center; font-size: 12px; color: var(--sp-muted); padding: 10px 0 2px; }
+.sp-empty { color: var(--muted); text-align: center; padding: 24px 10px; }
+.sp-status { text-align: center; font-size: 12px; color: var(--muted); padding: 10px 0 2px; }
 
-.sp-overall { text-align: center; background: var(--sp-card2); border: 1px solid var(--sp-line); border-radius: 14px; padding: 14px; margin-bottom: 16px; }
-.sp-big { font-size: 32px; font-weight: 800; color: var(--sp-accent); line-height: 1.1; }
-.sp-lbl { color: var(--sp-muted); font-size: 13px; }
-.sp-sem { background: var(--sp-card); border: 1px solid var(--sp-line); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
-.sp-semhead { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.sp-overall { text-align: center; background: var(--glass); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.sp-big { font-size: 34px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.sp-lbl { color: var(--muted); font-size: 13px; }
+.sp-sem { background: var(--glass); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.sp-semhead { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .sp-semhead h3 { margin: 0; font-size: 17px; }
-.sp-avg { margin-left: auto; background: var(--sp-card2); border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 14px; color: var(--sp-accent); }
-.sp-mod { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--sp-line); }
+.sp-avg { margin-left: auto; background: var(--fill); border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 14px; color: var(--accent); }
+.sp-mod { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--separator); }
 .sp-info { min-width: 0; }
 .sp-nm { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sp-sub { color: var(--sp-muted); font-size: 12px; }
+.sp-sub { color: var(--muted); font-size: 12px; }
 .sp-grade { margin-left: auto; font-weight: 800; font-size: 16px; min-width: 42px; text-align: right; }
-.sp-grade.open { color: var(--sp-muted); font-weight: 600; font-size: 13px; }
+.sp-grade.open { color: var(--muted); font-weight: 600; font-size: 13px; }
 
-.sp-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
+.sp-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
 .sp-backdrop.open { opacity: 1; pointer-events: auto; }
-.sp-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001; background: var(--sp-card2); color: var(--sp-fg); border-top-left-radius: 18px; border-top-right-radius: 18px; padding: 10px 18px calc(22px + env(safe-area-inset-bottom)); transform: translateY(110%); transition: transform 0.25s; max-width: 760px; margin: 0 auto; }
+.sp-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001; background: var(--surface); color: var(--text); border-top-left-radius: 18px; border-top-right-radius: 18px; border-top: 1px solid var(--separator); padding: 10px 18px calc(22px + env(safe-area-inset-bottom)); transform: translateY(110%); transition: transform 0.25s; max-width: 760px; margin: 0 auto; }
 .sp-sheet.open { transform: translateY(0); }
-.sp-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--sp-line); margin: 4px auto 12px; }
+.sp-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--separator); margin: 4px auto 12px; }
 .sp-sheet h3 { margin: 0 0 4px; font-size: 19px; }
-.sp-exbadge { display: inline-block; background: var(--sp-exam); color: #fff; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 9px; margin-bottom: 8px; }
-.sp-drow { display: flex; gap: 12px; padding: 8px 0; border-top: 1px solid var(--sp-line); }
-.sp-drow .k { color: var(--sp-muted); flex: 0 0 72px; font-size: 14px; }
+.sp-exbadge { display: inline-block; background: var(--bad); color: #fff; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 9px; margin-bottom: 8px; }
+.sp-drow { display: flex; gap: 12px; padding: 8px 0; border-top: 1px solid var(--separator); }
+.sp-drow .k { color: var(--muted); flex: 0 0 72px; font-size: 14px; }
 .sp-drow .v { font-size: 15px; font-weight: 500; min-width: 0; }
-.sp-sheetclose { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 10px; background: var(--sp-accent); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+.sp-sheetclose { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 15px; cursor: pointer; }

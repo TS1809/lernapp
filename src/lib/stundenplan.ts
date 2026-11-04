@@ -1,4 +1,4 @@
-import { db } from './db'
+import { db, EXAM_COLORS, MAX_EXAMS_PER_SEMESTER, uid } from './db'
 
 /**
  * Stundenplan & Noten aus DUALIS – über ein vom Nutzer betriebenes Relais (Cloudflare
@@ -169,4 +169,50 @@ export function average(modules: GradeModule[]): number | null {
 
 export function fmtGrade(x: number | null): string {
   return x == null ? '–' : x.toFixed(2).replace('.', ',')
+}
+
+/* ----------------------------------------------- Prüfungen übernehmen ---- */
+
+/**
+ * Legt Klausuren aus dem Stundenplan (als Prüfung markierte Termine) automatisch in
+ * der Prüfungsübersicht an. `profile.dualisExamKeys` merkt sich bereits übernommene
+ * Klausuren (`${Datum}:${Kürzel}`), damit nichts doppelt angelegt und eine vom Nutzer
+ * gelöschte Klausur nicht wieder erzeugt wird. Gibt die Zahl neu angelegter Prüfungen zurück.
+ */
+export async function importExamsFromTimetable(profileId: string, semesterId: string, events: TimetableEvent[]): Promise<number> {
+  const exams = events.filter((e) => e.isTest && e.shortName)
+  if (!exams.length) return 0
+  const profile = await db.profiles.get(profileId)
+  if (!profile) return 0
+
+  const known = new Set(profile.dualisExamKeys ?? [])
+  const added: string[] = []
+
+  for (const e of exams) {
+    const date = e.start.slice(0, 10)
+    const key = `${date}:${e.shortName}`
+    if (known.has(key)) continue
+    // Sicherheits-Abgleich über die (synchronisierte) Prüfungstabelle – verhindert Dubletten über Geräte hinweg.
+    const dup = await db.exams.where('profileId').equals(profileId).filter((x) => x.dualisKey === key).first()
+    if (!dup) {
+      const count = await db.exams.where('semesterId').equals(semesterId).count()
+      if (count >= MAX_EXAMS_PER_SEMESTER) continue // Semester voll – nicht merken, später erneut versuchen
+      await db.exams.add({
+        id: uid(),
+        profileId,
+        semesterId,
+        name: e.fullName || e.shortName,
+        date,
+        weight: 2,
+        color: EXAM_COLORS[count % EXAM_COLORS.length],
+        createdAt: Date.now(),
+        dualisKey: key,
+      })
+    }
+    known.add(key)
+    added.push(key)
+  }
+
+  if (added.length) await db.profiles.update(profileId, { dualisExamKeys: [...known] })
+  return added.length
 }

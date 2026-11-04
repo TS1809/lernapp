@@ -350,7 +350,7 @@ export function Dashboard() {
       </div>
       </div>
 
-      {profile.stundenplan && <DashboardStundenplan profileId={profile.id} />}
+      {profile.stundenplan && <DashboardStundenplan profileId={profile.id} semesterId={semester.id} />}
     </>
   )
 }

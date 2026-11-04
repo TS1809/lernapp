@@ -31,6 +31,8 @@ export interface Profile extends Synced {
   socratic?: boolean
   /** Stundenplan & Noten aus DUALIS über ein Relais (Test). Standard: aus. Die Zugangsdaten liegen gerätelokal in `meta`, nicht im synchronisierten Profil. */
   stundenplan?: boolean
+  /** Bereits aus dem DUALIS-Stundenplan übernommene Prüfungen (dualisKey je Klausur), damit keine Dubletten entstehen und gelöschte nicht erneut angelegt werden. */
+  dualisExamKeys?: string[]
 }
 
 export interface Semester extends Synced {
@@ -63,6 +65,8 @@ export interface Exam extends Synced {
   pendingDocs?: PendingDoc[]
   /** Pausierte Kapitel (`${packageId}:${chapter}`): Ihre neuen Karten werden noch nicht eingeführt. */
   pausedChapters?: string[]
+  /** Automatisch aus dem DUALIS-Stundenplan übernommen (`${date}:${Kürzel}`); kennzeichnet Klausuren, die nicht von Hand angelegt wurden. */
+  dualisKey?: string
 }
 
 export interface PendingDoc {

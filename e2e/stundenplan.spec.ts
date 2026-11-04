@@ -55,5 +55,9 @@ test('Stundenplan auf dem Dashboard, Noten als Kachel', async ({ page, context }
   await expect(page.getByText('Mathematik I')).toBeVisible()
   await expect(page.getByText('2,0', { exact: true })).toBeVisible()
 
+  // Die als Prüfung markierte Vorlesung wird automatisch in die Prüfungsübersicht übernommen
+  await page.goto('./#/pruefungen')
+  await expect(page.getByText('ET2025 Mathematik 3')).toBeVisible()
+
   expect(errors).toEqual([])
 })

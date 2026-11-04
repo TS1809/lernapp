@@ -13,6 +13,7 @@ import {
   getConfig,
   gradeNum,
   hhmm,
+  importExamsFromTimetable,
   isoOf,
   minutesOf,
   mondayOf,
@@ -102,7 +103,7 @@ export function NotenKachel({ profileId }: { profileId: string }) {
 }
 
 /** Stundenplan, der unter allen Kacheln dauerhaft offen auf dem Dashboard steht. */
-export function DashboardStundenplan({ profileId }: { profileId: string }) {
+export function DashboardStundenplan({ profileId, semesterId }: { profileId: string; semesterId: string }) {
   const cfg = useLiveQuery(() => getConfig(profileId), [profileId])
 
   if (!configReady(cfg)) {
@@ -117,14 +118,14 @@ export function DashboardStundenplan({ profileId }: { profileId: string }) {
   return (
     <div className="sp-app sp-dash">
       <div className="sp-sectitle">Stundenplan</div>
-      <PlanView profileId={profileId} cfg={cfg} />
+      <PlanView profileId={profileId} semesterId={semesterId} cfg={cfg} />
     </div>
   )
 }
 
 /* ------------------------------------------------- Wochenplan ---- */
 
-function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfig }) {
+function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterId: string; cfg: StundenplanConfig }) {
   const [monday, setMonday] = useState(() => mondayOf(new Date()))
   const [tt, setTt] = useState<CachedTimetable | null>(null)
   const [status, setStatus] = useState('')
@@ -150,6 +151,7 @@ function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfi
         if (cancelled) return
         setTt(fresh)
         setStatus(`Aktualisiert ${clock(fresh.fetchedAt)}`)
+        importExamsFromTimetable(profileId, semesterId, fresh.events).catch(() => {})
       } catch (e) {
         if (cancelled) return
         if (c) setStatus(`Gespeicherter Stand von ${clock(c.fetchedAt)} · DUALIS gerade nicht erreichbar`)
@@ -162,7 +164,7 @@ function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfi
     return () => {
       cancelled = true
     }
-  }, [profileId, monday, cfg.user, cfg.pass])
+  }, [profileId, semesterId, monday, cfg.user, cfg.pass])
 
   // Alle Semesterwochen einmalig im Hintergrund vorladen, damit das Wischen flüssig ist.
   useEffect(() => {
@@ -176,7 +178,8 @@ function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfi
         if (cancelled) return
         if (await cachedTimetable(profileId, iso)) continue
         try {
-          await refreshTimetable(profileId, cfg, iso, true)
+          const w = await refreshTimetable(profileId, cfg, iso, true)
+          importExamsFromTimetable(profileId, semesterId, w.events).catch(() => {})
         } catch {
           // Hintergrund – Fehler ignorieren
         }
@@ -186,7 +189,7 @@ function PlanView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfi
     return () => {
       cancelled = true
     }
-  }, [profileId, cfg.user, cfg.pass])
+  }, [profileId, semesterId, cfg.user, cfg.pass])
 
   function open(e: TimetableEvent) {
     setDetail(e)
