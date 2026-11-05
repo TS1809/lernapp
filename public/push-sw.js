@@ -16,7 +16,9 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: 'icon-192.png',
       badge: 'icon-192.png',
-      tag: 'stundenplan-aenderung',
+      // Eigener Tag je Art (Stundenplan, Noten, Kurs-Meldungen), damit sich die
+      // Benachrichtigungen nicht gegenseitig ersetzen; Standard für ältere Server-Stände.
+      tag: data.tag || 'stundenplan-aenderung',
       renotify: true,
       data: { url: data.url || '/lernapp/#/stundenplan' },
     }),
