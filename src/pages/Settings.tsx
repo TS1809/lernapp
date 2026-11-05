@@ -11,7 +11,7 @@ import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
 import { disablePush, enablePush, pushEnabled, pushSupported, sendPushTest } from '../lib/push'
-import { demoteAdmin, ensureCourseConfig, kickMember, promoteAdmin, sanitizeCourse, setCourse, syncCourse } from '../lib/course'
+import { allowRename, demoteAdmin, ensureCourseConfig, kickMember, promoteAdmin, renameSelf, sanitizeCourse, setCourse, syncCourse } from '../lib/course'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -441,7 +441,7 @@ function StundenplanSection({ profile }: { profile: Profile }) {
           {configReady(cfg) && (
             <>
               <div className="section-title" style={{ marginTop: 6 }}>Benachrichtigungen</div>
-              <PushToggle cfg={cfg} />
+              <PushToggle cfg={cfg} profileId={profile.id} />
             </>
           )}
         </>
@@ -451,7 +451,7 @@ function StundenplanSection({ profile }: { profile: Profile }) {
 }
 
 /** Push-Benachrichtigungen bei Stundenplan-Änderungen ein-/ausschalten (siehe lib/push.ts). */
-function PushToggle({ cfg }: { cfg: StundenplanConfig }) {
+function PushToggle({ cfg, profileId }: { cfg: StundenplanConfig; profileId: string }) {
   const [on, setOn] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -469,7 +469,7 @@ function PushToggle({ cfg }: { cfg: StundenplanConfig }) {
         await disablePush(cfg)
         setOn(false)
       } else {
-        await enablePush(cfg)
+        await enablePush(profileId, cfg)
         setOn(true)
         setMsg('Eingeschaltet – das Relais meldet sich, wenn sich etwas ändert.')
       }
@@ -528,7 +528,8 @@ function CourseSection({ profile }: { profile: Profile }) {
   const [memberId, setMemberId] = useState('')
   const [admin, setAdmin] = useState(false)
   const [admins, setAdmins] = useState<string[]>([])
-  const [members, setMembers] = useState<Record<string, { name?: string }>>({})
+  const [members, setMembers] = useState<Record<string, { name?: string; renames?: number; renameAllowed?: boolean }>>({})
+  const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const loaded = useRef(false)
@@ -592,8 +593,16 @@ function CourseSection({ profile }: { profile: Profile }) {
   const kick = (mid: string, name?: string) => {
     if (confirm(`${name || 'Mitglied'} aus dem Kurs entfernen?`)) act(() => kickMember(profile.id, mid))
   }
+  async function doRename() {
+    const n = newName.trim()
+    if (!n) return
+    await act(() => renameSelf(profile.id, n))
+    setNewName('')
+  }
 
   const memberList = Object.entries(members)
+  const myMember = members[memberId]
+  const canRename = (myMember?.renames ?? 0) < 1 || !!myMember?.renameAllowed
   return (
     <div className="card stack">
       <small className="muted" style={{ marginTop: -2 }}>
@@ -633,6 +642,7 @@ function CourseSection({ profile }: { profile: Profile }) {
                       ) : (
                         <button className="btn small" disabled={busy || admins.length >= 3} onClick={() => act(() => promoteAdmin(profile.id, mid))}>Zum Admin</button>
                       )}
+                      <button className="btn small" disabled={busy} onClick={() => act(() => allowRename(profile.id, mid))}>Umbenennen frei</button>
                       <button className="btn small ghost danger" disabled={busy} onClick={() => kick(mid, m.name)}>Entfernen</button>
                     </span>
                   )}
@@ -641,6 +651,22 @@ function CourseSection({ profile }: { profile: Profile }) {
             })}
           </div>
         </>
+      )}
+      {savedCourse && memberId && (
+        <div className="stack" style={{ gap: 6, marginTop: 2 }}>
+          <label className="field" style={{ marginBottom: 0 }}>
+            <span>Dein Anzeigename im Kurs</span>
+            <input type="text" placeholder={myMember?.name || 'Dein Name'} value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </label>
+          <div className="row">
+            <button className="btn small" disabled={busy || !newName.trim()} onClick={doRename}>Umbenennen</button>
+          </div>
+          <small className="muted">
+            {canRename
+              ? 'Einmal frei änderbar; danach bittet ein Admin um Freigabe.'
+              : 'Umbenennen bereits genutzt – ein Admin kann eine weitere Änderung freigeben.'}
+          </small>
+        </div>
       )}
       {msg && <small className={/fehl|nicht|gültig|Fehler/i.test(msg) ? 'badge-warn' : 'muted'}>{msg}</small>}
     </div>

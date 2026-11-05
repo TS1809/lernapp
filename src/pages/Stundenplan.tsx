@@ -25,7 +25,7 @@ import {
   type StundenplanConfig,
   type TimetableEvent,
 } from '../lib/stundenplan'
-import { gradeRange, submitCourseGrade, type CourseGradeStats } from '../lib/course'
+import { gradeRange, moduleKey, submitCourseGrade, type CourseGradeStats } from '../lib/course'
 
 const SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr']
 const DAYSFULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
@@ -327,11 +327,24 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
   const [status, setStatus] = useState('')
   const [courseStats, setCourseStats] = useState<CourseGradeStats | null>(null)
 
-  // Eigenen Gesamtschnitt an den Kurs melden und anonyme Kursstatistik (Schnitt + Bandbreite) holen.
+  // Eigene Noten (gesamt + je Semester + je Klausur) anonym an den Kurs melden, Kursstatistik holen.
   useEffect(() => {
     if (!data) return
-    const ov = average(data.semesters.flatMap((s) => s.modules))
-    submitCourseGrade(profileId, ov)
+    const all = data.semesters.flatMap((s) => s.modules)
+    const semesters: Record<string, number> = {}
+    for (const s of data.semesters) {
+      const a = average(s.modules)
+      if (a != null) semesters[s.semester] = a
+    }
+    const modules: Record<string, number> = {}
+    for (const m of all) {
+      const g = gradeNum(m.grade)
+      if (g != null) {
+        const k = moduleKey(m)
+        if (k) modules[k] = g
+      }
+    }
+    submitCourseGrade(profileId, { avg: average(all), semesters, modules })
       .then((s) => setCourseStats(s ?? null))
       .catch(() => {})
   }, [data, profileId])
@@ -371,17 +384,17 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
       <div className="sp-overall">
         <div className="sp-big">{fmtGrade(ov)}</div>
         <div className="sp-lbl">Gesamtschnitt (gewichtet nach Credits)</div>
-        {courseStats && courseStats.count > 0 && (
+        {courseStats && courseStats.overall.count > 0 && (
           <>
             <div className="sp-lbl" style={{ marginTop: 10 }}>
-              Kurs ({courseStats.count}): Ø {fmtGrade(courseStats.avg ?? null)} · Bandbreite {gradeRange(courseStats)}
+              Kurs ({courseStats.overall.count}): Ø {fmtGrade(courseStats.overall.avg ?? null)} · Bandbreite {gradeRange(courseStats.overall)}
             </div>
-            {courseStats.avg != null && ov != null && (
-              <div className="sp-lbl" style={{ color: ov <= courseStats.avg ? 'var(--good)' : 'var(--bad)' }}>
-                {ov < courseStats.avg
-                  ? `Du bist ${fmtGrade(courseStats.avg - ov)} besser als der Kursschnitt.`
-                  : ov > courseStats.avg
-                    ? `Du liegst ${fmtGrade(ov - courseStats.avg)} unter dem Kursschnitt.`
+            {courseStats.overall.avg != null && ov != null && (
+              <div className="sp-lbl" style={{ color: ov <= courseStats.overall.avg ? 'var(--good)' : 'var(--bad)' }}>
+                {ov < courseStats.overall.avg
+                  ? `Du bist ${fmtGrade(courseStats.overall.avg - ov)} besser als der Kursschnitt.`
+                  : ov > courseStats.overall.avg
+                    ? `Du liegst ${fmtGrade(ov - courseStats.overall.avg)} unter dem Kursschnitt.`
                     : 'Genau im Kursschnitt.'}
               </div>
             )}
@@ -392,19 +405,27 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
         .filter((s) => s.modules.length > 0)
         .map((s) => {
           const a = average(s.modules)
+          const cs = courseStats?.semesters[s.semester]
           return (
             <div key={s.semester} className="sp-sem">
               <div className="sp-semhead">
                 <h3>{s.semester}</h3>
                 {a != null && <span className="sp-avg">Ø {fmtGrade(a)}</span>}
               </div>
+              {cs && cs.count > 0 && (
+                <div className="sp-sub" style={{ margin: '-4px 0 8px' }}>
+                  Kurs ({cs.count}): Ø {fmtGrade(cs.avg ?? null)} · {gradeRange(cs)}
+                </div>
+              )}
               {s.modules.map((m, i) => {
                 const gn = gradeNum(m.grade)
+                const cm = courseStats?.modules[moduleKey(m)]
                 return (
                   <div key={i} className="sp-mod">
                     <div className="sp-info">
                       <div className="sp-nm">{m.name || m.code}</div>
                       <div className="sp-sub">{[m.code, m.credits ? `${m.credits} CP` : '', m.status].filter(Boolean).join(' · ')}</div>
+                      {cm && cm.count > 0 && <div className="sp-sub">Kurs Ø {fmtGrade(cm.avg ?? null)} · {gradeRange(cm)} ({cm.count})</div>}
                     </div>
                     <span className={gn != null ? 'sp-grade' : 'sp-grade open'}>
                       {gn != null ? (m.grade ?? '').replace('.', ',') : m.grade || 'offen'}

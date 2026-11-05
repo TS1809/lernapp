@@ -1,4 +1,5 @@
 import { RELAY_TOKEN, RELAY_URL, type StundenplanConfig } from './stundenplan'
+import { ensureCourseConfig } from './course'
 
 /**
  * Web-Push-Benachrichtigungen bei Stundenplan-Änderungen. Das Abo (Push-Subscription)
@@ -42,7 +43,7 @@ export async function pushEnabled(): Promise<boolean> {
 }
 
 /** Benachrichtigungen einschalten: Erlaubnis holen, abonnieren, Abo + Login ans Relais. */
-export async function enablePush(cfg: StundenplanConfig): Promise<void> {
+export async function enablePush(profileId: string, cfg: StundenplanConfig): Promise<void> {
   if (!pushSupported()) {
     throw new Error('Dieses Gerät unterstützt keine Benachrichtigungen. Auf dem iPhone die App zuerst über „Teilen → Zum Home-Bildschirm“ installieren.')
   }
@@ -53,10 +54,12 @@ export async function enablePush(cfg: StundenplanConfig): Promise<void> {
   const sub =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToBytes(VAPID_PUBLIC) }))
+  // Kurs + Mitglied mitschicken, damit das Relais die Kurs-Noten serverseitig frisch halten kann.
+  const course = await ensureCourseConfig(profileId).catch(() => undefined)
   const res = await fetch(endpoint('/push/subscribe'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-DUALIS-USER': cfg.user, 'X-DUALIS-PASS': cfg.pass },
-    body: JSON.stringify({ subscription: sub.toJSON() }),
+    body: JSON.stringify({ subscription: sub.toJSON(), course: course?.course, memberId: course?.memberId }),
   })
   const data = (await res.json().catch(() => ({}))) as { error?: string }
   if (!res.ok || data.error) {

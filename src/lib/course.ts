@@ -16,14 +16,23 @@ export interface CourseConfig {
 export interface CourseMember {
   name?: string
   seen?: number
+  renames?: number
+  renameAllowed?: boolean
 }
 
-/** Anonyme Notenstatistik des Kurses – nur Aggregat, keine Einzelnoten. */
-export interface CourseGradeStats {
+/** Anonymes Aggregat (Anzahl/Schnitt/Spannweite) – keine Einzelnoten. */
+export interface GradeStat {
   count: number
   avg?: number
   min?: number
   max?: number
+}
+
+/** Kurs-Noten: gesamt, je Semester (Name) und je Klausur (Modul-Key). */
+export interface CourseGradeStats {
+  overall: GradeStat
+  semesters: Record<string, GradeStat>
+  modules: Record<string, GradeStat>
 }
 
 export interface CourseSyncResult {
@@ -187,13 +196,44 @@ export async function deleteCourseHomework(profileId: string, courseHwId: string
   await post('/course/homework/delete', { course: cfg.course, memberId: cfg.memberId, id: courseHwId })
 }
 
-/** Eigenen Notenschnitt melden und anonyme Kursstatistik (Schnitt + Bandbreite) zurückbekommen. */
-export async function submitCourseGrade(profileId: string, avg: number | null): Promise<CourseGradeStats | undefined> {
+/** Eigene Noten (gesamt + je Semester + je Klausur) melden, anonyme Kursstatistik zurück. */
+export async function submitCourseGrade(
+  profileId: string,
+  grades: { avg: number | null; semesters?: Record<string, number>; modules?: Record<string, number> },
+): Promise<CourseGradeStats | undefined> {
   const cfg = await ensureCourseConfig(profileId)
   if (!cfg.course) return undefined
   const name = (await db.profiles.get(profileId))?.name ?? ''
-  const res = await post<{ gradeStats?: CourseGradeStats }>('/course/grade', { course: cfg.course, memberId: cfg.memberId, name, avg: avg ?? null })
+  const res = await post<{ gradeStats?: CourseGradeStats }>('/course/grade', {
+    course: cfg.course,
+    memberId: cfg.memberId,
+    name,
+    avg: grades.avg ?? null,
+    semesters: grades.semesters ?? {},
+    modules: grades.modules ?? {},
+  })
   return res.gradeStats
+}
+
+/** Modul-Key für den anonymen Kursvergleich (muss App und Relais gleich bilden). */
+export function moduleKey(m: { code?: string | null; name?: string | null }): string {
+  return String(m.code || m.name || '').trim().toLowerCase()
+}
+
+/** Sich selbst umbenennen (einmal frei, danach nur mit Admin-Freigabe). */
+export async function renameSelf(profileId: string, newName: string): Promise<void> {
+  const cfg = await ensureCourseConfig(profileId)
+  if (!cfg.course) throw new Error('Kein Kurs eingestellt.')
+  const name = (await db.profiles.get(profileId))?.name ?? ''
+  await post('/course/rename', { course: cfg.course, memberId: cfg.memberId, name, newName })
+}
+
+/** Admin: einem Mitglied eine weitere Umbenennung freigeben. */
+export async function allowRename(profileId: string, target: string): Promise<void> {
+  const cfg = await ensureCourseConfig(profileId)
+  if (!cfg.course) return
+  const name = (await db.profiles.get(profileId))?.name ?? ''
+  await post('/course/rename/allow', { course: cfg.course, memberId: cfg.memberId, name, target })
 }
 
 export async function kickMember(profileId: string, target: string): Promise<void> {
@@ -217,7 +257,7 @@ export async function demoteAdmin(profileId: string, target: string): Promise<vo
   await post('/course/admin', { course: cfg.course, memberId: cfg.memberId, name, target, action: 'demote' })
 }
 
-export function gradeRange(stats?: CourseGradeStats): string {
+export function gradeRange(stats?: GradeStat): string {
   if (!stats || !stats.count || stats.min == null || stats.max == null) return '–'
   const fmt = (x: number) => x.toFixed(2).replace('.', ',')
   return stats.min === stats.max ? fmt(stats.min) : `${fmt(stats.min)}–${fmt(stats.max)}`

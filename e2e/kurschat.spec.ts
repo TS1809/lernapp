@@ -39,7 +39,7 @@ test('Kurschat: Nachricht senden, reagieren', async ({ page, context }) => {
       return route.fulfill({ headers: CORS, json: { ok: true, messages: msgs, admins: ['d:e25019'] } })
     }
     if (url.includes('/course/')) {
-      return route.fulfill({ headers: CORS, json: { ok: true, admin: true, admins: ['d:e25019'], members: { 'd:e25019': { name: 'Tester' } }, homework: [], gradeStats: { count: 0 } } })
+      return route.fulfill({ headers: CORS, json: { ok: true, admin: true, admins: ['d:e25019'], members: { 'd:e25019': { name: 'Tester' } }, homework: [], gradeStats: { overall: { count: 0 }, semesters: {}, modules: {} } } })
     }
     return route.fulfill({ headers: CORS, json: { ok: true } })
   })
