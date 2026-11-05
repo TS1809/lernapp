@@ -60,9 +60,10 @@ test('Kurschat: Nachricht senden, reagieren', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Senden' }).click()
   await expect(page.getByText('Hallo Kurs')).toBeVisible()
 
-  // Reaktion setzen
+  // Reaktion setzen – und sehen, wer reagiert hat
   await page.locator('.chat-react').filter({ hasText: '👍' }).click()
   await expect(page.locator('.chat-react.on')).toContainText('1')
+  await expect(page.locator('.chat-reactors')).toContainText('Du')
 
   expect(errors).toEqual([])
 })

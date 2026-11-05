@@ -23,6 +23,8 @@ export interface ChatState {
   messages: ChatMessage[]
   admins: string[]
   memberId: string
+  course: string
+  members: Record<string, string> // memberId -> Anzeigename (für „wer hat reagiert")
 }
 
 function endpoint(path: string): string {
@@ -52,14 +54,45 @@ async function base(profileId: string): Promise<{ course: string; memberId: stri
 export async function listChat(profileId: string): Promise<ChatState | undefined> {
   const b = await base(profileId)
   if (!b) return undefined
-  const res = await post<{ messages: ChatMessage[]; admins: string[] }>('/course/chat/list', b)
-  return { messages: res.messages ?? [], admins: res.admins ?? [], memberId: b.memberId }
+  const res = await post<{ messages: ChatMessage[]; admins: string[]; members?: Record<string, string> }>('/course/chat/list', b)
+  return { messages: res.messages ?? [], admins: res.admins ?? [], memberId: b.memberId, course: b.course, members: res.members ?? {} }
 }
 
-export async function sendChat(profileId: string, text: string): Promise<void> {
+/** Nachricht senden – gibt die erstellte Nachricht zurück (für die sofortige eigene Anzeige). */
+export async function sendChat(profileId: string, text: string): Promise<ChatMessage> {
   const b = await base(profileId)
   if (!b) throw new Error('Kein Kurs eingestellt.')
-  await post('/course/chat/send', { ...b, text })
+  const res = await post<{ message: ChatMessage }>('/course/chat/send', { ...b, text })
+  return res.message
+}
+
+/* ---- Ungelesen-Stand pro Kurs, gerätelokal (für die Dashboard-Kachel) ---- */
+const readKey = (course: string) => `lernapp:chat:read:${course}`
+
+function getLastRead(course: string): number {
+  try {
+    return Number(localStorage.getItem(readKey(course)) || '0') || 0
+  } catch {
+    return 0
+  }
+}
+
+/** Markiert den Kurschat als gelesen (bis jetzt). */
+export function markChatRead(course: string): void {
+  try {
+    localStorage.setItem(readKey(course), String(Date.now()))
+  } catch {
+    // ohne localStorage kein Ungelesen-Zähler – nicht schlimm
+  }
+}
+
+/** Anzahl ungelesener Nachrichten (von anderen) für die Kachel. */
+export async function chatUnreadCount(profileId: string): Promise<number> {
+  const b = await base(profileId)
+  if (!b) return 0
+  const res = await post<{ messages: ChatMessage[] }>('/course/chat/list', b)
+  const lastRead = getLastRead(b.course)
+  return (res.messages ?? []).filter((m) => (m.at || 0) > lastRead && m.memberId !== b.memberId).length
 }
 
 export async function deleteChat(profileId: string, id: string): Promise<void> {

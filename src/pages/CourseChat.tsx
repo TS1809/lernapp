@@ -1,9 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import { useActive } from '../state'
-import { PageHeader } from '../components/ui'
-import { deleteChat, keepChat, listChat, reactChat, sendChat, type ChatState } from '../lib/chat'
+import { PageHeader, Widget } from '../components/ui'
+import { chatUnreadCount, deleteChat, keepChat, listChat, markChatRead, reactChat, sendChat, type ChatMessage, type ChatState } from '../lib/chat'
 
 const EMOJIS = ['👍', '🔥', '😂', '❤️', '✅', '❓']
+
+/** Dashboard-Kachel mit Ungelesen-Zähler (ohne den Chat öffnen zu müssen). */
+export function KurschatKachel({ profileId }: { profileId: string }) {
+  const [unread, setUnread] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    const tick = () =>
+      chatUnreadCount(profileId)
+        .then((n) => { if (!cancelled) setUnread(n) })
+        .catch(() => {})
+    tick()
+    const t = setInterval(tick, 20000)
+    const onVis = () => { if (document.visibilityState === 'visible') tick() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelled = true; clearInterval(t); document.removeEventListener('visibilitychange', onVis) }
+  }, [profileId])
+  const badge = unread > 0 ? <span className="w-badge">{unread > 99 ? '99+' : unread}</span> : undefined
+  return (
+    <Widget size="small" to="/kurschat" title="Kurschat" icon="chat" badge={badge}>
+      <div className="w-headline">Kurschat</div>
+      <div className="w-foot">{unread > 0 ? `${unread} neue Nachricht${unread === 1 ? '' : 'en'}` : 'Nachrichten im Kurs'}</div>
+    </Widget>
+  )
+}
 
 function when(ts: number): string {
   const d = new Date(ts)
@@ -27,7 +51,13 @@ export function CourseChat() {
     busy.current = true
     try {
       const s = await listChat(profile.id)
-      setState(s ?? null)
+      setState((prev) => {
+        if (!s) return null
+        // noch nicht bestätigte eigene Nachrichten (optimistisch) behalten, bis der Server sie liefert
+        const pending = (prev?.messages ?? []).filter((m) => m.id.startsWith('tmp-'))
+        return { ...s, messages: [...s.messages, ...pending] }
+      })
+      if (s) markChatRead(s.course) // sichtbar = gelesen
       setError('')
     } catch (e) {
       setError((e as Error).message)
@@ -59,9 +89,21 @@ export function CourseChat() {
 
   async function send() {
     const t = text.trim()
-    if (!t) return
+    if (!t || !state) return
     setText('')
-    await act(() => sendChat(profile.id, t))
+    // Eigene Nachricht sofort anzeigen (optimistisch); bei anderen erscheint sie beim nächsten Nachladen.
+    const tmpId = 'tmp-' + Date.now()
+    const temp: ChatMessage = { id: tmpId, memberId: state.memberId, name: profile.name, text: t, at: Date.now(), reactions: {} }
+    setState((s) => (s ? { ...s, messages: [...s.messages, temp] } : s))
+    try {
+      const real = await sendChat(profile.id, t)
+      // Temp entfernen und die echte Nachricht einmalig einfügen (falls ein Poll sie schon geholt hat).
+      setState((s) => (s ? { ...s, messages: [...s.messages.filter((m) => m.id !== tmpId && m.id !== real.id), real] } : s))
+    } catch (e) {
+      setState((s) => (s ? { ...s, messages: s.messages.filter((m) => m.id !== tmpId) } : s))
+      setError((e as Error).message)
+      setText(t) // Text zurückgeben, damit man es erneut versuchen kann
+    }
   }
 
   if (ready && !state) {
@@ -121,6 +163,18 @@ export function CourseChat() {
                   <button className="chat-tool danger" onClick={() => { if (confirm('Nachricht löschen?')) act(() => deleteChat(profile.id, m.id)) }}>Löschen</button>
                 )}
               </div>
+              {Object.entries(m.reactions ?? {}).some(([, who]) => who.length > 0) && (
+                <div className="chat-reactors">
+                  {Object.entries(m.reactions ?? {})
+                    .filter(([, who]) => who.length > 0)
+                    .map(([e, who]) => (
+                      <span key={e} className="chat-reactor">
+                        <span className="chat-reactor-e">{e}</span>
+                        {who.map((id) => (id === me ? 'Du' : state?.members[id] || 'Mitglied')).join(', ')}
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           )
         })}
