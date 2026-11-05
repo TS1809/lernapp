@@ -524,6 +524,7 @@ function PushToggle({ cfg }: { cfg: StundenplanConfig }) {
 function CourseSection({ profile }: { profile: Profile }) {
   const { semester } = useActive()
   const [course, setCourseInput] = useState('')
+  const [savedCourse, setSavedCourse] = useState('')
   const [memberId, setMemberId] = useState('')
   const [admin, setAdmin] = useState(false)
   const [members, setMembers] = useState<Record<string, { name?: string }>>({})
@@ -554,8 +555,9 @@ function CourseSection({ profile }: { profile: Profile }) {
       if (loaded.current) return
       loaded.current = true
       setCourseInput(cfg.course)
+      setSavedCourse(cfg.course)
       setMemberId(cfg.memberId)
-      if (cfg.course) refresh(true)
+      if (cfg.course) refresh(true) // automatisch beitreten, wenn der Kurs erkannt wurde
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id])
@@ -569,6 +571,7 @@ function CourseSection({ profile }: { profile: Profile }) {
     setCourseInput(c)
     setMsg('')
     await setCourse(profile.id, c)
+    setSavedCourse(c)
     if (await refresh()) setMsg(`Mit Kurs ${c.toUpperCase()} verbunden.`)
   }
 
@@ -590,17 +593,22 @@ function CourseSection({ profile }: { profile: Profile }) {
   return (
     <div className="card stack">
       <small className="muted" style={{ marginTop: -2 }}>
-        Hausaufgaben für den ganzen Kurs: Trägt jemand eine Hausaufgabe „für den Kurs" ein, bekommen alle sie eingetragen – mit Aufgabe und Musterlösung. Der Kurs wird aus deinem DUALIS-Login abgeleitet (z. B. „e25") und lässt sich hier ändern. Das erste Mitglied je Kurs wird Admin.
+        Hausaufgaben für den ganzen Kurs: Trägt jemand eine Hausaufgabe „für den Kurs" ein, bekommen alle sie eingetragen – mit Aufgabe und Musterlösung. Dein Kurs wird automatisch aus dem DUALIS-Login erkannt (z. B. „e25") und du trittst ihm automatisch bei. Das erste Mitglied je Kurs wird Admin. Unten kannst du den Kurs bei Bedarf ändern.
       </small>
+      {savedCourse && sanitizeCourse(course) === savedCourse && (
+        <small style={{ color: 'var(--good)' }}>✓ Verbunden mit Kurs {savedCourse.toUpperCase()}.</small>
+      )}
       <label className="field" style={{ marginBottom: 0 }}>
-        <span>Kurs-Kürzel</span>
+        <span>Kurs-Kürzel{savedCourse ? ' (ändern)' : ''}</span>
         <input type="text" autoCapitalize="none" placeholder="z. B. e25" value={course} onChange={(e) => setCourseInput(e.target.value)} />
       </label>
-      <div className="row">
-        <button className="btn primary grow" disabled={busy} onClick={join}>
-          {busy ? '…' : 'Verbinden'}
-        </button>
-      </div>
+      {(!savedCourse || sanitizeCourse(course) !== savedCourse) && (
+        <div className="row">
+          <button className="btn primary grow" disabled={busy || !sanitizeCourse(course)} onClick={join}>
+            {busy ? '…' : savedCourse ? 'Kurs ändern' : 'Verbinden'}
+          </button>
+        </div>
+      )}
       {memberList.length > 0 && (
         <>
           <small className="muted">{admin ? 'Du bist Admin dieses Kurses.' : `${memberList.length} Mitglied(er) im Kurs.`}</small>

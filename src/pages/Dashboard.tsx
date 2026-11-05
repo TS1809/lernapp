@@ -19,6 +19,7 @@ import { db } from '../lib/db'
 import { FSRS_HINT_REVIEWS } from './FsrsSettings'
 import { dayShare, dayWork, weekShares } from '../lib/dayProgress'
 import { DashboardStundenplan, NotenKachel } from './Stundenplan'
+import { syncCourse } from '../lib/course'
 
 export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string; extra: number }> = {
   mobile: { title: 'Unterwegs', unit: 'Karten', one: 'Karte', extra: 10 },
@@ -46,6 +47,11 @@ export function Dashboard() {
     // Ein Wert pro Tag; nach dem Lernen aktualisiert, damit das Pensum des Tages für die Lernserie stimmt.
     if (data) updateSnapshots(profile, data.exams, data.cards, Date.now(), data.plan).catch(() => {})
   }, [data])
+
+  // Kurs automatisch beitreten (aus dem DUALIS-Login erkannt) und Kurs-Hausaufgaben holen.
+  useEffect(() => {
+    syncCourse(profile.id, semester.id, profile.name).catch(() => {})
+  }, [profile.id, semester.id])
 
   if (!data) return null
   const { exams, cards, plan, logs, homework } = data
