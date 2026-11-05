@@ -174,6 +174,17 @@ export function fmtGrade(x: number | null): string {
 /* ----------------------------------------------- Prüfungen übernehmen ---- */
 
 /**
+ * Entfernt ein vorangestelltes Kurs-/Jahrgangskürzel aus dem Prüfungsnamen –
+ * z. B. „ET2025 Mathematik 3" → „Mathematik 3", „WI2024 BWL" → „BWL". Lässt normale
+ * Namen unverändert und greift nur, wenn Buchstaben direkt von einer Jahreszahl gefolgt werden.
+ */
+export function cleanExamName(name?: string | null): string {
+  const s = String(name ?? '').trim()
+  const cleaned = s.replace(/^[A-Za-zÄÖÜ]{2,6}\d{2,4}[A-Za-z]{0,2}[\s:.·–—-]+/, '').trim()
+  return cleaned || s
+}
+
+/**
  * Legt Klausuren aus dem Stundenplan (als Prüfung markierte Termine) automatisch in
  * der Prüfungsübersicht an. `profile.dualisExamKeys` merkt sich bereits übernommene
  * Klausuren (`${Datum}:${Kürzel}`), damit nichts doppelt angelegt und eine vom Nutzer
@@ -201,7 +212,7 @@ export async function importExamsFromTimetable(profileId: string, semesterId: st
         id: uid(),
         profileId,
         semesterId,
-        name: e.fullName || e.shortName,
+        name: cleanExamName(e.fullName || e.shortName),
         date,
         weight: 2,
         color: EXAM_COLORS[count % EXAM_COLORS.length],
@@ -223,6 +234,13 @@ export async function importExamsFromTimetable(profileId: string, semesterId: st
  * aber früher schon einmal geladen (und zwischengespeichert) wurden.
  */
 export async function importExamsFromCache(profileId: string, semesterId: string): Promise<number> {
+  // Bereits übernommene Klausuren nachträglich vom Kurs-/Jahrgangskürzel befreien.
+  const existing = await db.exams.where('profileId').equals(profileId).toArray()
+  for (const ex of existing) {
+    if (!ex.dualisKey) continue
+    const nn = cleanExamName(ex.name)
+    if (nn && nn !== ex.name) await db.exams.update(ex.id, { name: nn })
+  }
   const prefix = `stundenplan:tt:${profileId}:`
   const rows = await db.meta.where('key').startsWith(prefix).toArray()
   const events = rows.flatMap((r) => (r.value as CachedTimetable | undefined)?.events ?? [])

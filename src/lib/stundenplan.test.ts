@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { average, creditNum, fmtGrade, gradeNum, isoOf, minutesOf, mondayOf, type GradeModule } from './stundenplan'
+import { average, cleanExamName, creditNum, fmtGrade, gradeNum, isoOf, minutesOf, mondayOf, type GradeModule } from './stundenplan'
 
 describe('Noten-Auswertung', () => {
   it('liest Zahlennoten, ignoriert Text', () => {
@@ -48,5 +48,23 @@ describe('Datum und Zeit', () => {
   it('rechnet die Startzeit in Minuten um', () => {
     expect(minutesOf('2026-11-02T08:00')).toBe(480)
     expect(minutesOf('2026-11-02T13:30')).toBe(810)
+  })
+})
+
+describe('Prüfungsnamen aufräumen', () => {
+  it('entfernt das Kurs-/Jahrgangskürzel verschiedener Studiengänge', () => {
+    expect(cleanExamName('ET2025 Mathematik 3')).toBe('Mathematik 3')
+    expect(cleanExamName('WI2024 BWL I')).toBe('BWL I')
+    expect(cleanExamName('MB2026 Technische Mechanik')).toBe('Technische Mechanik')
+    expect(cleanExamName('TINF22A Theoretische Informatik')).toBe('Theoretische Informatik')
+    expect(cleanExamName('ET2025 Einführung Konstruktionslehre')).toBe('Einführung Konstruktionslehre')
+  })
+
+  it('lässt normale Namen unverändert und wird nicht leer', () => {
+    expect(cleanExamName('Mathematik 3')).toBe('Mathematik 3')
+    expect(cleanExamName('Signale und Systeme 2')).toBe('Signale und Systeme 2')
+    expect(cleanExamName('ET2025')).toBe('ET2025') // nur Kürzel → Original behalten
+    expect(cleanExamName('')).toBe('')
+    expect(cleanExamName(null)).toBe('')
   })
 })
