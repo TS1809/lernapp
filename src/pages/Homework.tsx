@@ -111,7 +111,7 @@ export function HomeworkList() {
 export function HomeworkForm() {
   const { id } = useParams()
   const [search] = useSearchParams()
-  const { profile, semester } = useActive()
+  const { profile } = useActive()
   const navigate = useNavigate()
   const exams = useSemesterExams()
   const [existing, setExisting] = useState<Homework>()
@@ -153,18 +153,17 @@ export function HomeworkForm() {
     if (!title.trim()) return setError('Bitte gib einen Titel ein.')
     if (!due) return setError('Bitte gib einen Abgabetermin ein.')
     if (!(m > 0 && m <= 600)) return setError('Die Dauer muss zwischen 1 und 600 Minuten liegen.')
-    const saved = await saveHomework({ ...existing, profileId: profile.id, examId, title: title.trim(), description, due, minutes: Math.round(m), image })
     if (!id && shareToCourse && course) {
       const examName = exams?.find((x) => x.id === examId)?.name ?? ''
       try {
-        await shareHomework(profile.id, { subject: examName, title: title.trim(), description, due, minutes: Math.round(m), image })
-        await deleteHomework(saved) // wird als Kurs-Eintrag neu geholt
-        await syncCourse(profile.id, semester.id, profile.name)
+        // Direkt teilen: legt die Kurs-Hausaufgabe sofort lokal an (kein Warten auf vollen Sync).
+        await shareHomework(profile.id, { subject: examName, title: title.trim(), description, due, minutes: Math.round(m), image }, examId)
         return navigate('/hausaufgaben', { replace: true })
       } catch (err) {
         return setError('Mit dem Kurs teilen fehlgeschlagen: ' + (err as Error).message)
       }
     }
+    const saved = await saveHomework({ ...existing, profileId: profile.id, examId, title: title.trim(), description, due, minutes: Math.round(m), image })
     navigate(`/hausaufgabe/${saved.id}`, { replace: true })
   }
 
@@ -363,18 +362,12 @@ export function HomeworkPage() {
     setBusy(true)
     setMsg('')
     try {
-      await shareHomework(profile.id, {
-        subject: exam.name,
-        title: h.title,
-        description: h.description,
-        due: h.due,
-        minutes: h.minutes,
-        image: h.image,
-        solution: h.solution,
-        solutionImage: h.solutionImage,
-      })
-      await deleteHomework(h) // wird als Kurs-Eintrag neu geholt
-      await syncCourse(profile.id, semester.id, profile.name)
+      await shareHomework(
+        profile.id,
+        { subject: exam.name, title: h.title, description: h.description, due: h.due, minutes: h.minutes, image: h.image, solution: h.solution, solutionImage: h.solutionImage },
+        h.examId,
+      )
+      await deleteHomework(h) // persönliche Kopie entfernen – als Kurs-Eintrag jetzt vorhanden
       navigate('/hausaufgaben', { replace: true })
     } catch (e) {
       setMsg('Teilen fehlgeschlagen: ' + (e as Error).message)

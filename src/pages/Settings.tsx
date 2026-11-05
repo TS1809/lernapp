@@ -11,7 +11,7 @@ import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
 import { disablePush, enablePush, pushEnabled, pushSupported, sendPushTest } from '../lib/push'
-import { ensureCourseConfig, sanitizeCourse, setCourse, syncCourse, transferAdmin } from '../lib/course'
+import { demoteAdmin, ensureCourseConfig, kickMember, promoteAdmin, sanitizeCourse, setCourse, syncCourse } from '../lib/course'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -527,6 +527,7 @@ function CourseSection({ profile }: { profile: Profile }) {
   const [savedCourse, setSavedCourse] = useState('')
   const [memberId, setMemberId] = useState('')
   const [admin, setAdmin] = useState(false)
+  const [admins, setAdmins] = useState<string[]>([])
   const [members, setMembers] = useState<Record<string, { name?: string }>>({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -538,6 +539,7 @@ function CourseSection({ profile }: { profile: Profile }) {
       const res = await syncCourse(profile.id, semester.id, profile.name)
       if (res) {
         setAdmin(res.admin)
+        setAdmins(res.admins)
         setMembers(res.members)
       }
       return true
@@ -575,18 +577,20 @@ function CourseSection({ profile }: { profile: Profile }) {
     if (await refresh()) setMsg(`Mit Kurs ${c.toUpperCase()} verbunden.`)
   }
 
-  async function makeAdmin(toId: string) {
-    if (!confirm('Admin-Recht an dieses Mitglied übertragen? Du bist danach nicht mehr Admin.')) return
+  async function act(fn: () => Promise<void>) {
     setBusy(true)
     setMsg('')
     try {
-      await transferAdmin(profile.id, toId)
+      await fn()
       await refresh()
     } catch (e) {
       setMsg((e as Error).message)
     } finally {
       setBusy(false)
     }
+  }
+  const kick = (mid: string, name?: string) => {
+    if (confirm(`${name || 'Mitglied'} aus dem Kurs entfernen?`)) act(() => kickMember(profile.id, mid))
   }
 
   const memberList = Object.entries(members)
@@ -611,21 +615,30 @@ function CourseSection({ profile }: { profile: Profile }) {
       )}
       {memberList.length > 0 && (
         <>
-          <small className="muted">{admin ? 'Du bist Admin dieses Kurses.' : `${memberList.length} Mitglied(er) im Kurs.`}</small>
+          <small className="muted">{admin ? `Du bist Admin dieses Kurses (${admins.length}/3 Admins).` : `${memberList.length} Mitglied(er) im Kurs.`}</small>
           <div className="list">
-            {memberList.map(([mid, m]) => (
-              <div key={mid} className="list-item">
-                <span className="grow">
-                  <span style={{ fontWeight: 500 }}>{m.name || 'Mitglied'}</span>
-                  {mid === memberId && <span className="chip accent" style={{ marginLeft: 6 }}>Du</span>}
-                </span>
-                {admin && mid !== memberId && (
-                  <button className="btn small" disabled={busy} onClick={() => makeAdmin(mid)}>
-                    Zum Admin machen
-                  </button>
-                )}
-              </div>
-            ))}
+            {memberList.map(([mid, m]) => {
+              const isAdminMember = admins.includes(mid)
+              return (
+                <div key={mid} className="list-item" style={{ gap: 8, flexWrap: 'wrap' }}>
+                  <span className="grow" style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: 500 }}>{m.name || 'Mitglied'}</span>
+                    {mid === memberId && <span className="chip accent" style={{ marginLeft: 6 }}>Du</span>}
+                    {isAdminMember && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}
+                  </span>
+                  {admin && mid !== memberId && (
+                    <span className="row" style={{ gap: 6 }}>
+                      {isAdminMember ? (
+                        <button className="btn small" disabled={busy} onClick={() => act(() => demoteAdmin(profile.id, mid))}>Admin entziehen</button>
+                      ) : (
+                        <button className="btn small" disabled={busy || admins.length >= 3} onClick={() => act(() => promoteAdmin(profile.id, mid))}>Zum Admin</button>
+                      )}
+                      <button className="btn small ghost danger" disabled={busy} onClick={() => kick(mid, m.name)}>Entfernen</button>
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </>
       )}

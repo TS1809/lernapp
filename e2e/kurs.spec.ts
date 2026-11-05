@@ -29,7 +29,7 @@ test('Kurs-Hausaufgabe: teilen und als Kurs-Eintrag wiederfinden', async ({ page
       return route.fulfill({ headers: CORS, json: { ok: true, id: hw.id, homework: hw } })
     }
     if (url.includes('/course/sync')) {
-      return route.fulfill({ headers: CORS, json: { ok: true, admin: true, adminId: 'd:e25019', members: { 'd:e25019': { name: 'Tester' } }, homework: courseHw } })
+      return route.fulfill({ headers: CORS, json: { ok: true, admin: true, admins: ['d:e25019'], members: { 'd:e25019': { name: 'Tester' } }, homework: courseHw, gradeStats: { count: 0 } } })
     }
     return route.fulfill({ headers: CORS, json: { ok: true } })
   })

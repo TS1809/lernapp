@@ -22,6 +22,9 @@ test('Stundenplan auf dem Dashboard, Noten als Kachel', async ({ page, context }
         },
       })
     }
+    if (url.includes('/course/')) {
+      return route.fulfill({ headers: CORS, json: { ok: true, admin: false, admins: [], members: {}, homework: [], gradeStats: { count: 0 } } })
+    }
     return route.fulfill({
       headers: CORS,
       json: {

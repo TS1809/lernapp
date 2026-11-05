@@ -25,6 +25,7 @@ import {
   type StundenplanConfig,
   type TimetableEvent,
 } from '../lib/stundenplan'
+import { gradeRange, submitCourseGrade, type CourseGradeStats } from '../lib/course'
 
 const SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr']
 const DAYSFULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
@@ -324,6 +325,16 @@ function DetailBody({ ev }: { ev: TimetableEvent }) {
 function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfig }) {
   const [data, setData] = useState<CachedGrades | null>(null)
   const [status, setStatus] = useState('')
+  const [courseStats, setCourseStats] = useState<CourseGradeStats | null>(null)
+
+  // Eigenen Gesamtschnitt an den Kurs melden und anonyme Kursstatistik (Schnitt + Bandbreite) holen.
+  useEffect(() => {
+    if (!data) return
+    const ov = average(data.semesters.flatMap((s) => s.modules))
+    submitCourseGrade(profileId, ov)
+      .then((s) => setCourseStats(s ?? null))
+      .catch(() => {})
+  }, [data, profileId])
 
   useEffect(() => {
     let cancelled = false
@@ -360,6 +371,22 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
       <div className="sp-overall">
         <div className="sp-big">{fmtGrade(ov)}</div>
         <div className="sp-lbl">Gesamtschnitt (gewichtet nach Credits)</div>
+        {courseStats && courseStats.count > 0 && (
+          <>
+            <div className="sp-lbl" style={{ marginTop: 10 }}>
+              Kurs ({courseStats.count}): Ø {fmtGrade(courseStats.avg ?? null)} · Bandbreite {gradeRange(courseStats)}
+            </div>
+            {courseStats.avg != null && ov != null && (
+              <div className="sp-lbl" style={{ color: ov <= courseStats.avg ? 'var(--good)' : 'var(--bad)' }}>
+                {ov < courseStats.avg
+                  ? `Du bist ${fmtGrade(courseStats.avg - ov)} besser als der Kursschnitt.`
+                  : ov > courseStats.avg
+                    ? `Du liegst ${fmtGrade(ov - courseStats.avg)} unter dem Kursschnitt.`
+                    : 'Genau im Kursschnitt.'}
+              </div>
+            )}
+          </>
+        )}
       </div>
       {sems
         .filter((s) => s.modules.length > 0)
