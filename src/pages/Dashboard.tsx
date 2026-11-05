@@ -347,6 +347,13 @@ export function Dashboard() {
 
         {profile.stundenplan && <NotenKachel profileId={profile.id} />}
 
+        {profile.stundenplan && (
+          <Widget size="small" to="/kurschat" title="Kurschat" icon="chat">
+            <div className="w-headline">Kurschat</div>
+            <div className="w-foot">Nachrichten im Kurs</div>
+          </Widget>
+        )}
+
         <Widget size="small" to="/import" title="Importieren" icon="download">
           <div className="w-headline">Karten&shy;paket hinzufügen</div>
           <div className="w-foot">Neu oder Update</div>

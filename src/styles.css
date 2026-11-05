@@ -606,3 +606,19 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .sp-drow .k { color: var(--muted); flex: 0 0 72px; font-size: 14px; }
 .sp-drow .v { font-size: 15px; font-weight: 500; min-width: 0; }
 .sp-sheetclose { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 15px; cursor: pointer; }
+
+/* Kurschat */
+.chat-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+.chat-msg { background: var(--surface); border: 1px solid var(--separator); border-radius: 14px; padding: 10px 12px; max-width: 88%; align-self: flex-start; }
+.chat-msg.mine { background: var(--accent-soft); align-self: flex-end; }
+.chat-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+.chat-head b { font-size: 14px; }
+.chat-head .muted { font-size: 12px; }
+.chat-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.chat-react { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--separator); background: var(--surface-2); border-radius: 999px; padding: 2px 8px; font-size: 13px; cursor: pointer; color: var(--text); }
+.chat-react.on { background: var(--accent-soft); border-color: var(--accent); }
+.chat-tool { border: 0; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; padding: 2px 4px; }
+.chat-tool.danger { color: var(--bad); }
+.chat-compose { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; background: var(--bg); padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); margin-top: 8px; }
+.chat-compose textarea { flex: 1; resize: none; }

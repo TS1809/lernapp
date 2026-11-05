@@ -44,6 +44,7 @@ const paths = {
   flag: 'M5 21V4.5m0 0h11.5l-2 4 2 4H5',
   bell: 'M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15l1.5-2ZM10 20.5a2 2 0 0 0 4 0',
   trash: 'M4 6.5h16M9.5 6.5V4.5h5v2M6 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h7a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6M14 10.5v6',
+  chat: 'M6 5h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
 }
 
 export type IconName = keyof typeof paths

@@ -21,6 +21,7 @@ import { MockExam } from './pages/MockExam'
 import { FsrsSettings } from './pages/FsrsSettings'
 import { Documents } from './pages/Documents'
 import { Noten } from './pages/Stundenplan'
+import { CourseChat } from './pages/CourseChat'
 import { SyncProvider } from './sync-state'
 import { ErrorBoundary, UpdateBanner } from './components/AppChrome'
 
@@ -78,6 +79,7 @@ function Shell() {
         <Route path="/lernalgorithmus" element={<FsrsSettings />} />
         <Route path="/unterlagen" element={<Documents />} />
         <Route path="/noten" element={<Noten />} />
+        <Route path="/kurschat" element={<CourseChat />} />
         <Route path="/semester/:id" element={<SemesterForm />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>
