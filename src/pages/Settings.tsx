@@ -397,11 +397,35 @@ function StundenplanSection({ profile }: { profile: Profile }) {
         <>
           <label className="field" style={{ marginBottom: 0 }}>
             <span>DUALIS-Benutzer</span>
-            <input type="text" autoCapitalize="none" autoComplete="username" value={form.user} onChange={(e) => set({ user: e.target.value })} />
+            <input
+              type="text"
+              autoCapitalize="none"
+              autoComplete="username"
+              placeholder="z. B. e25019@hb.dhbw-stuttgart.de"
+              value={form.user}
+              onChange={(e) => {
+                // Sobald „@" getippt wird, die DHBW-Domain automatisch ergänzen.
+                let v = e.target.value
+                if (v.endsWith('@')) v += 'hb.dhbw-stuttgart.de'
+                set({ user: v })
+              }}
+            />
           </label>
           <label className="field" style={{ marginBottom: 0 }}>
             <span>DUALIS-Passwort</span>
-            <input type="password" autoComplete="current-password" value={form.pass} onChange={(e) => set({ pass: e.target.value })} />
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={form.pass}
+              onChange={(e) => set({ pass: e.target.value })}
+              onKeyDown={(e) => {
+                // Enter im Passwortfeld speichert direkt.
+                if (e.key === 'Enter' && form.user && form.pass) {
+                  e.preventDefault()
+                  save()
+                }
+              }}
+            />
           </label>
           <small className="muted">Dein Passwort wird nur zum Abruf deines eigenen Plans geschickt und nirgends gespeichert.</small>
           <div className="row">
