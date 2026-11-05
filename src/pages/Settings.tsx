@@ -11,6 +11,7 @@ import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
 import { disablePush, enablePush, pushEnabled, pushSupported, sendPushTest } from '../lib/push'
+import { ensureCourseConfig, sanitizeCourse, setCourse, syncCourse, transferAdmin } from '../lib/course'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -155,6 +156,9 @@ export function Settings() {
 
       <div className="section-title">Stundenplan & Noten (Test)</div>
       <StundenplanSection profile={profile} />
+
+      <div className="section-title">Kurs-Hausaufgaben (Test)</div>
+      <CourseSection profile={profile} />
 
       <div className="section-title">Semester</div>
       <div className="list">
@@ -488,6 +492,111 @@ function PushToggle({ cfg }: { cfg: StundenplanConfig }) {
         </button>
       )}
       {msg && <small className={/fehl|nicht|keine|erlaubt/i.test(msg) ? 'badge-warn' : 'muted'}>{msg}</small>}
+    </div>
+  )
+}
+
+/** Kurs wählen/beitreten und (als Admin) das Admin-Recht übertragen. Siehe lib/course.ts. */
+function CourseSection({ profile }: { profile: Profile }) {
+  const { semester } = useActive()
+  const [course, setCourseInput] = useState('')
+  const [memberId, setMemberId] = useState('')
+  const [admin, setAdmin] = useState(false)
+  const [members, setMembers] = useState<Record<string, { name?: string }>>({})
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const loaded = useRef(false)
+
+  async function refresh() {
+    setBusy(true)
+    setMsg('')
+    try {
+      const res = await syncCourse(profile.id, semester.id, profile.name)
+      if (res) {
+        setAdmin(res.admin)
+        setMembers(res.members)
+      }
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    ;(async () => {
+      const cfg = await ensureCourseConfig(profile.id)
+      if (loaded.current) return
+      loaded.current = true
+      setCourseInput(cfg.course)
+      setMemberId(cfg.memberId)
+      if (cfg.course) refresh()
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id])
+
+  async function join() {
+    const c = sanitizeCourse(course)
+    if (!c) {
+      setMsg('Bitte ein gültiges Kürzel eingeben (Buchstaben + Ziffern, z. B. e25).')
+      return
+    }
+    setCourseInput(c)
+    await setCourse(profile.id, c)
+    await refresh()
+    if (!msg) setMsg(`Mit Kurs ${c.toUpperCase()} verbunden.`)
+  }
+
+  async function makeAdmin(toId: string) {
+    if (!confirm('Admin-Recht an dieses Mitglied übertragen? Du bist danach nicht mehr Admin.')) return
+    setBusy(true)
+    setMsg('')
+    try {
+      await transferAdmin(profile.id, toId)
+      await refresh()
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const memberList = Object.entries(members)
+  return (
+    <div className="card stack">
+      <small className="muted" style={{ marginTop: -2 }}>
+        Hausaufgaben für den ganzen Kurs: Trägt jemand eine Hausaufgabe „für den Kurs" ein, bekommen alle sie eingetragen – mit Aufgabe und Musterlösung. Der Kurs wird aus deinem DUALIS-Login abgeleitet (z. B. „e25") und lässt sich hier ändern. Das erste Mitglied je Kurs wird Admin.
+      </small>
+      <label className="field" style={{ marginBottom: 0 }}>
+        <span>Kurs-Kürzel</span>
+        <input type="text" autoCapitalize="none" placeholder="z. B. e25" value={course} onChange={(e) => setCourseInput(e.target.value)} />
+      </label>
+      <div className="row">
+        <button className="btn primary grow" disabled={busy} onClick={join}>
+          {busy ? '…' : 'Verbinden'}
+        </button>
+      </div>
+      {memberList.length > 0 && (
+        <>
+          <small className="muted">{admin ? 'Du bist Admin dieses Kurses.' : `${memberList.length} Mitglied(er) im Kurs.`}</small>
+          <div className="list">
+            {memberList.map(([mid, m]) => (
+              <div key={mid} className="list-item">
+                <span className="grow">
+                  <span style={{ fontWeight: 500 }}>{m.name || 'Mitglied'}</span>
+                  {mid === memberId && <span className="chip accent" style={{ marginLeft: 6 }}>Du</span>}
+                </span>
+                {admin && mid !== memberId && (
+                  <button className="btn small" disabled={busy} onClick={() => makeAdmin(mid)}>
+                    Zum Admin machen
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {msg && <small className={/fehl|nicht|gültig|Fehler/i.test(msg) ? 'badge-warn' : 'muted'}>{msg}</small>}
     </div>
   )
 }

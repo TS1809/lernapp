@@ -5,6 +5,7 @@ import { useActive } from '../state'
 import { db, type Exam, type Homework } from '../lib/db'
 import { addDays, daysUntil, formatDate, isoDate } from '../lib/dates'
 import { completeHomework, deleteHomework, imageToDataUrl, isDueSoon, keepAsTask, reopenHomework, saveHomework, sortOpen } from '../lib/homework'
+import { deleteCourseHomework, getCourseConfig, shareHomework, syncCourse } from '../lib/course'
 import { Rich } from '../components/Rich'
 import { PageHeader } from '../components/ui'
 
@@ -34,9 +35,14 @@ function useSemesterExams() {
 
 /** Übersicht aller Hausaufgaben: fällige, spätere (zum Vorziehen) und erledigte. */
 export function HomeworkList() {
+  const { profile, semester } = useActive()
   const [search] = useSearchParams()
   const examFilter = search.get('exam') ?? undefined
   const exams = useSemesterExams()
+  // Kurs-Hausaufgaben beim Öffnen holen (erscheinen dann in der Liste).
+  useEffect(() => {
+    syncCourse(profile.id, semester.id, profile.name).catch(() => {})
+  }, [profile.id, semester.id])
   const list = useLiveQuery(async () => {
     if (!exams) return undefined
     const all = (await Promise.all(exams.map((e) => db.homework.where('examId').equals(e.id).toArray()))).flat()
@@ -59,7 +65,10 @@ export function HomeworkList() {
             <Link key={h.id} className="list-item" to={`/hausaufgabe/${h.id}`}>
               <span className="dot" style={{ background: examById.get(h.examId)?.color }} />
               <span className="grow">
-                <span className="truncate" style={{ display: 'block', fontWeight: 500 }}>{h.title}</span>
+                <span className="truncate" style={{ display: 'block', fontWeight: 500 }}>
+                  {h.title}
+                  {h.fromCourse && <span className="chip accent" style={{ marginLeft: 6, fontSize: 11, padding: '1px 7px' }}>Kurs</span>}
+                </span>
                 <small className={!h.doneAt && daysUntil(h.due) < 0 ? 'badge-warn' : 'muted'}>
                   {examById.get(h.examId)?.name} · {h.doneAt ? `erledigt am ${new Date(h.doneAt).toLocaleDateString('de-DE')}` : `${dueLabel(h)} · ca. ${h.minutes} min`}
                 </small>
@@ -102,7 +111,7 @@ export function HomeworkList() {
 export function HomeworkForm() {
   const { id } = useParams()
   const [search] = useSearchParams()
-  const { profile } = useActive()
+  const { profile, semester } = useActive()
   const navigate = useNavigate()
   const exams = useSemesterExams()
   const [existing, setExisting] = useState<Homework>()
@@ -112,7 +121,13 @@ export function HomeworkForm() {
   const [due, setDue] = useState(isoDate(addDays(Date.now(), 7)))
   const [minutes, setMinutes] = useState('30')
   const [image, setImage] = useState<string>()
+  const [course, setCourse] = useState('')
+  const [shareToCourse, setShareToCourse] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    getCourseConfig(profile.id).then((c) => setCourse(c?.course ?? ''))
+  }, [profile.id])
 
   useEffect(() => {
     if (!id) return
@@ -139,6 +154,17 @@ export function HomeworkForm() {
     if (!due) return setError('Bitte gib einen Abgabetermin ein.')
     if (!(m > 0 && m <= 600)) return setError('Die Dauer muss zwischen 1 und 600 Minuten liegen.')
     const saved = await saveHomework({ ...existing, profileId: profile.id, examId, title: title.trim(), description, due, minutes: Math.round(m), image })
+    if (!id && shareToCourse && course) {
+      const examName = exams?.find((x) => x.id === examId)?.name ?? ''
+      try {
+        await shareHomework(profile.id, { subject: examName, title: title.trim(), description, due, minutes: Math.round(m), image })
+        await deleteHomework(saved) // wird als Kurs-Eintrag neu geholt
+        await syncCourse(profile.id, semester.id, profile.name)
+        return navigate('/hausaufgaben', { replace: true })
+      } catch (err) {
+        return setError('Mit dem Kurs teilen fehlgeschlagen: ' + (err as Error).message)
+      }
+    }
     navigate(`/hausaufgabe/${saved.id}`, { replace: true })
   }
 
@@ -191,6 +217,12 @@ export function HomeworkForm() {
             {image && <button type="button" className="btn small ghost danger" onClick={() => setImage(undefined)}>Entfernen</button>}
           </div>
         </div>
+        {!id && course && (
+          <label className="row" style={{ gap: 10, alignItems: 'flex-start', marginTop: 4 }}>
+            <input type="checkbox" checked={shareToCourse} onChange={(e) => setShareToCourse(e.target.checked)} style={{ marginTop: 3 }} />
+            <span style={{ fontSize: 15 }}>Für den ganzen Kurs <b>{course.toUpperCase()}</b> teilen (alle bekommen sie eingetragen)</span>
+          </label>
+        )}
         {error && <p className="badge-warn">{error}</p>}
         <button className="btn primary block" type="submit">Speichern</button>
       </div>
@@ -233,6 +265,7 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
         <div className="meta">
           {exam && <span className="chip"><span className="dot" style={{ background: exam.color }} />{exam.name}</span>}
           <span className="chip accent">Hausaufgabe</span>
+          {h.fromCourse && <span className="chip accent">Kurs{h.courseAuthor ? ` · ${h.courseAuthor}` : ''}</span>}
           <span className={`chip${daysUntil(h.due) < 0 && !h.doneAt ? ' warn' : ''}`}>{h.doneAt ? 'erledigt' : dueLabel(h)}</span>
           <span className="chip">ca. {h.minutes} min</span>
         </div>
@@ -240,6 +273,14 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
           <h2 style={{ margin: '0 0 8px' }}>{h.title}</h2>
           {h.description.trim() && <Rich text={h.description} />}
           {h.image && <img className="card-image" src={h.image} alt="Aufgabenblatt" />}
+          {(h.courseSolution || h.courseSolutionImage) && (
+            <>
+              <hr />
+              <b>Musterlösung{h.courseAuthor ? ` · ${h.courseAuthor}` : ''}</b>
+              {h.courseSolution && <Rich text={h.courseSolution} />}
+              {h.courseSolutionImage && <img className="card-image" src={h.courseSolutionImage} alt="Musterlösung" />}
+            </>
+          )}
           {(h.solution || h.solutionImage) && step !== 'solution' && (
             <>
               <hr />
@@ -295,6 +336,13 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
 export function HomeworkPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { profile, semester } = useActive()
+  const [course, setCourse] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    getCourseConfig(profile.id).then((c) => setCourse(c?.course ?? ''))
+  }, [profile.id])
   const data = useLiveQuery(async () => {
     const h = await db.homework.get(id)
     return { h, exam: h ? await db.exams.get(h.examId) : undefined }
@@ -309,9 +357,49 @@ export function HomeworkPage() {
       </div>
     )
   }
+
+  async function shareToCourse() {
+    if (!h || !exam) return
+    setBusy(true)
+    setMsg('')
+    try {
+      await shareHomework(profile.id, {
+        subject: exam.name,
+        title: h.title,
+        description: h.description,
+        due: h.due,
+        minutes: h.minutes,
+        image: h.image,
+        solution: h.solution,
+        solutionImage: h.solutionImage,
+      })
+      await deleteHomework(h) // wird als Kurs-Eintrag neu geholt
+      await syncCourse(profile.id, semester.id, profile.name)
+      navigate('/hausaufgaben', { replace: true })
+    } catch (e) {
+      setMsg('Teilen fehlgeschlagen: ' + (e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  async function removeFromCourse() {
+    if (!h?.courseHwId) return
+    if (!confirm('Diese Hausaufgabe für den ganzen Kurs entfernen?')) return
+    setBusy(true)
+    setMsg('')
+    try {
+      await deleteCourseHomework(profile.id, h.courseHwId)
+      await syncCourse(profile.id, semester.id, profile.name)
+      navigate('/hausaufgaben', { replace: true })
+    } catch (e) {
+      setMsg((e as Error).message)
+      setBusy(false)
+    }
+  }
+
   return (
     <>
-      <PageHeader back title="Hausaufgabe" action={<Link className="btn small" to={`/hausaufgabe/${h.id}/bearbeiten`}>Bearbeiten</Link>} />
+      <PageHeader back title="Hausaufgabe" action={!h.fromCourse ? <Link className="btn small" to={`/hausaufgabe/${h.id}/bearbeiten`}>Bearbeiten</Link> : undefined} />
       <HomeworkWork key={`${h.id}:${h.doneAt ?? 0}`} h={h} exam={exam} onFinished={() => navigate('/hausaufgaben')} />
       {!h.doneAt && (
         <Link className="btn block" style={{ marginTop: 12 }} to={`/erinnerung/neu?hausaufgabe=${h.id}`}>
@@ -324,17 +412,29 @@ export function HomeworkPage() {
           {h.keptAt && <span className="muted grow" style={{ alignSelf: 'center', fontSize: 14 }}>Als Übungsaufgabe übernommen</span>}
         </div>
       )}
-      <button
-        className="btn block ghost danger"
-        style={{ marginTop: 12 }}
-        onClick={async () => {
-          if (!confirm('Hausaufgabe löschen? Eine bereits übernommene Übungsaufgabe bleibt erhalten.')) return
-          await deleteHomework(h)
-          navigate('/hausaufgaben', { replace: true })
-        }}
-      >
-        Löschen
-      </button>
+      {msg && <p className="badge-warn" style={{ marginTop: 12 }}>{msg}</p>}
+      {!h.fromCourse && course && (
+        <button className="btn block" style={{ marginTop: 12 }} disabled={busy} onClick={shareToCourse}>
+          Für den Kurs {course.toUpperCase()} teilen
+        </button>
+      )}
+      {h.fromCourse ? (
+        <button className="btn block ghost danger" style={{ marginTop: 12 }} disabled={busy} onClick={removeFromCourse}>
+          Aus dem Kurs entfernen
+        </button>
+      ) : (
+        <button
+          className="btn block ghost danger"
+          style={{ marginTop: 12 }}
+          onClick={async () => {
+            if (!confirm('Hausaufgabe löschen? Eine bereits übernommene Übungsaufgabe bleibt erhalten.')) return
+            await deleteHomework(h)
+            navigate('/hausaufgaben', { replace: true })
+          }}
+        >
+          Löschen
+        </button>
+      )}
     </>
   )
 }

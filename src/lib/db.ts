@@ -270,6 +270,18 @@ export interface Homework {
   /** Als Übungsaufgabe in die Wiederholung übernommen */
   keptAt?: number
   updatedAt?: number
+  /* --- Kurs-Hausaufgaben (zentral geteilt über das Relais) --- */
+  /** Kurs-Kürzel, aus dem diese Hausaufgabe stammt (gesetzt = vom Kurs geteilt, nicht selbst angelegt). */
+  fromCourse?: string
+  /** ID des Eintrags im Kurs-Speicher (zum Abgleich/Löschen). */
+  courseHwId?: string
+  /** Anzeigename, wer die Aufgabe im Kurs eingestellt hat. */
+  courseAuthor?: string
+  /** memberId des Erstellers (für „darf löschen/ändern"). */
+  courseOwner?: string
+  /** Vom Kurs geteilte Musterlösung (getrennt von der eigenen `solution`). */
+  courseSolution?: string
+  courseSolutionImage?: string
 }
 
 /** Freie Erinnerung („an etwas denken“) – optional mit einer Prüfung oder Hausaufgabe verknüpft. */
