@@ -10,7 +10,7 @@ import { readJsonFile, safeFileName, saveFile } from '../lib/packages'
 import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
-import { disablePush, enablePush, pushEnabled, pushSupported, sendPushTest } from '../lib/push'
+import { disablePush, enablePush, enrollGrades, pushEnabled, pushSupported, sendPushTest, unenrollGrades } from '../lib/push'
 import { allowRename, demoteAdmin, ensureCourseConfig, kickMember, promoteAdmin, renameSelf, sanitizeCourse, setCourse, syncCourse } from '../lib/course'
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
@@ -372,12 +372,16 @@ function StundenplanSection({ profile }: { profile: Profile }) {
   }
 
   async function save() {
-    await setConfig(profile.id, { user: form.user.trim(), pass: form.pass })
+    const c = { user: form.user.trim(), pass: form.pass }
+    await setConfig(profile.id, c)
     setSaved(true)
+    // Login fürs Hintergrund-Noten-Update hinterlegen (live von allen – auch ohne Push).
+    await enrollGrades(profile.id, c)
   }
 
   async function remove() {
     if (!confirm('Zugangsdaten für Stundenplan/Noten von diesem Gerät löschen?')) return
+    await unenrollGrades(profile.id)
     await clearConfig(profile.id)
     setForm({ user: '', pass: '' })
     loaded.current = true
@@ -427,7 +431,10 @@ function StundenplanSection({ profile }: { profile: Profile }) {
               }}
             />
           </label>
-          <small className="muted">Dein Passwort wird nur zum Abruf deines eigenen Plans geschickt und nirgends gespeichert.</small>
+          <small className="muted">
+            Für den Kursvergleich wird dein DUALIS-Login in deinem Relais gespeichert, damit deine Noten auch bei
+            geschlossener App im Hintergrund aktuell bleiben (live von allen). Es liegt nur dort – nicht in der Dropbox-Synchronisation.
+          </small>
           <div className="row">
             <button className="btn primary grow" disabled={!form.user || !form.pass} onClick={save}>
               {saved ? 'Gespeichert ✓' : 'Speichern'}

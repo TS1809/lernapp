@@ -80,6 +80,40 @@ export async function disablePush(cfg: StundenplanConfig): Promise<void> {
   await sub.unsubscribe().catch(() => {})
 }
 
+/**
+ * Login fürs Hintergrund-Noten-Update im Relais hinterlegen („live von allen"), ohne Push.
+ * So hält der Cron die Kurs-Noten dieses Mitglieds aktuell, auch wenn es nur sein Login
+ * speichert und die App gleich wieder schließt. Nur sinnvoll mit eingestelltem Kurs.
+ */
+export async function enrollGrades(profileId: string, cfg: StundenplanConfig): Promise<void> {
+  try {
+    const course = await ensureCourseConfig(profileId)
+    if (!course.course) return
+    await fetch(endpoint('/course/grade/enroll'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-DUALIS-USER': cfg.user, 'X-DUALIS-PASS': cfg.pass },
+      body: JSON.stringify({ course: course.course, memberId: course.memberId }),
+      keepalive: true, // läuft zu Ende, auch wenn die App direkt nach dem Speichern geschlossen wird
+    })
+  } catch {
+    // Nicht blockieren – der Kursvergleich füllt sich sonst beim nächsten Öffnen der Noten.
+  }
+}
+
+/** Hinterlegtes Login fürs Hintergrund-Update wieder entfernen (beim Löschen der Zugangsdaten). */
+export async function unenrollGrades(profileId: string): Promise<void> {
+  try {
+    const course = await ensureCourseConfig(profileId)
+    await fetch(endpoint('/course/grade/unenroll'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ course: course.course, memberId: course.memberId }),
+    })
+  } catch {
+    // egal
+  }
+}
+
 /** Testbenachrichtigung über das Relais auslösen. */
 export async function sendPushTest(cfg: StundenplanConfig): Promise<void> {
   const sub = await currentSub()
