@@ -531,17 +531,18 @@ function CourseSection({ profile }: { profile: Profile }) {
   const [msg, setMsg] = useState('')
   const loaded = useRef(false)
 
-  async function refresh() {
+  async function refresh(silent = false): Promise<boolean> {
     setBusy(true)
-    setMsg('')
     try {
       const res = await syncCourse(profile.id, semester.id, profile.name)
       if (res) {
         setAdmin(res.admin)
         setMembers(res.members)
       }
+      return true
     } catch (e) {
-      setMsg((e as Error).message)
+      if (!silent) setMsg((e as Error).message)
+      return false
     } finally {
       setBusy(false)
     }
@@ -554,7 +555,7 @@ function CourseSection({ profile }: { profile: Profile }) {
       loaded.current = true
       setCourseInput(cfg.course)
       setMemberId(cfg.memberId)
-      if (cfg.course) refresh()
+      if (cfg.course) refresh(true)
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id])
@@ -566,9 +567,9 @@ function CourseSection({ profile }: { profile: Profile }) {
       return
     }
     setCourseInput(c)
+    setMsg('')
     await setCourse(profile.id, c)
-    await refresh()
-    if (!msg) setMsg(`Mit Kurs ${c.toUpperCase()} verbunden.`)
+    if (await refresh()) setMsg(`Mit Kurs ${c.toUpperCase()} verbunden.`)
   }
 
   async function makeAdmin(toId: string) {
