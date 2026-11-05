@@ -23,7 +23,21 @@ test('Stundenplan auf dem Dashboard, Noten als Kachel', async ({ page, context }
       })
     }
     if (url.includes('/course/')) {
-      return route.fulfill({ headers: CORS, json: { ok: true, admin: false, admins: [], members: {}, homework: [], gradeStats: { overall: { count: 0 }, semesters: {}, modules: {} } } })
+      return route.fulfill({
+        headers: CORS,
+        json: {
+          ok: true,
+          admin: false,
+          admins: [],
+          members: {},
+          homework: [],
+          gradeStats: {
+            overall: { count: 3, avg: 1.8, min: 1.3, max: 2.3 },
+            semesters: { 'WiSe 2025/26': { count: 3, avg: 1.8, min: 1.3, max: 2.0 } },
+            modules: { t4eit1001: { count: 3, avg: 1.5, min: 1.0, max: 2.0 } },
+          },
+        },
+      })
     }
     return route.fulfill({
       headers: CORS,
@@ -57,6 +71,10 @@ test('Stundenplan auf dem Dashboard, Noten als Kachel', async ({ page, context }
   await expect(page.getByText('Gesamtschnitt (gewichtet nach Credits)')).toBeVisible()
   await expect(page.getByText('Mathematik I')).toBeVisible()
   await expect(page.getByText('2,0', { exact: true })).toBeVisible()
+  // Kurs-Schnitt steht jetzt neben der eigenen Note (farbig), nicht mehr unter der Modulbeschreibung
+  await expect(page.getByText('Kurs Ø 1,50 (3)')).toBeVisible()
+  await expect(page.getByText(/Bandbreite 1,00.2,00/)).toBeVisible()
+  await expect(page.getByText(/Kurs \(3\): Ø 1,80 · Bandbreite/)).toBeVisible()
 
   // Die als Prüfung markierte Vorlesung wird automatisch in die Prüfungsübersicht übernommen –
   // ohne das Kurs-/Jahrgangskürzel „ET2025“ (fullName war „ET2025 Mathematik 3“).

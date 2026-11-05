@@ -322,6 +322,14 @@ function DetailBody({ ev }: { ev: TimetableEvent }) {
 
 /* ------------------------------------------------- Noten-Ansicht ---- */
 
+/** Farbe für den Kursvergleich: eigene Note besser als der Kursschnitt → grün, schlechter → rot. */
+function courseColor(mine: number | null, avg?: number): string {
+  if (mine == null || avg == null) return 'var(--muted)'
+  if (mine < avg) return 'var(--good)'
+  if (mine > avg) return 'var(--bad)'
+  return 'var(--muted)'
+}
+
 function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConfig }) {
   const [data, setData] = useState<CachedGrades | null>(null)
   const [status, setStatus] = useState('')
@@ -413,7 +421,7 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
                 {a != null && <span className="sp-avg">Ø {fmtGrade(a)}</span>}
               </div>
               {cs && cs.count > 0 && (
-                <div className="sp-sub" style={{ margin: '-4px 0 8px' }}>
+                <div className="sp-sub" style={{ margin: '-4px 0 8px', color: courseColor(a, cs.avg), fontWeight: 600 }}>
                   Kurs ({cs.count}): Ø {fmtGrade(cs.avg ?? null)} · {gradeRange(cs)}
                 </div>
               )}
@@ -425,11 +433,22 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
                     <div className="sp-info">
                       <div className="sp-nm">{m.name || m.code}</div>
                       <div className="sp-sub">{[m.code, m.credits ? `${m.credits} CP` : '', m.status].filter(Boolean).join(' · ')}</div>
-                      {cm && cm.count > 0 && <div className="sp-sub">Kurs Ø {fmtGrade(cm.avg ?? null)} · {gradeRange(cm)} ({cm.count})</div>}
                     </div>
-                    <span className={gn != null ? 'sp-grade' : 'sp-grade open'}>
-                      {gn != null ? (m.grade ?? '').replace('.', ',') : m.grade || 'offen'}
-                    </span>
+                    <div className="sp-right">
+                      <span className={gn != null ? 'sp-grade' : 'sp-grade open'}>
+                        {gn != null ? (m.grade ?? '').replace('.', ',') : m.grade || 'offen'}
+                      </span>
+                      {cm && cm.count > 0 && (
+                        <>
+                          <span className="sp-course" style={{ color: courseColor(gn, cm.avg) }}>
+                            Kurs Ø {fmtGrade(cm.avg ?? null)} ({cm.count})
+                          </span>
+                          {cm.min != null && cm.max != null && cm.min !== cm.max && (
+                            <span className="sp-courserange">Bandbreite {gradeRange(cm)}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )
               })}

@@ -592,8 +592,11 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .sp-info { min-width: 0; }
 .sp-nm { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp-sub { color: var(--muted); font-size: 12px; }
-.sp-grade { margin-left: auto; font-weight: 800; font-size: 16px; min-width: 42px; text-align: right; }
+.sp-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }
+.sp-grade { font-weight: 800; font-size: 16px; min-width: 42px; text-align: right; }
 .sp-grade.open { color: var(--muted); font-weight: 600; font-size: 13px; }
+.sp-course { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sp-courserange { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
 .sp-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
 .sp-backdrop.open { opacity: 1; pointer-events: auto; }
