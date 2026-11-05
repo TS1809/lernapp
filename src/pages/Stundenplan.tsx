@@ -418,13 +418,20 @@ function NotenView({ profileId, cfg }: { profileId: string; cfg: StundenplanConf
             <div key={s.semester} className="sp-sem">
               <div className="sp-semhead">
                 <h3>{s.semester}</h3>
-                {a != null && <span className="sp-avg">Ø {fmtGrade(a)}</span>}
-              </div>
-              {cs && cs.count > 0 && (
-                <div className="sp-sub" style={{ margin: '-4px 0 8px', color: courseColor(a, cs.avg), fontWeight: 600 }}>
-                  Kurs ({cs.count}): Ø {fmtGrade(cs.avg ?? null)} · {gradeRange(cs)}
+                <div className="sp-right">
+                  {a != null && <span className="sp-avg">Ø {fmtGrade(a)}</span>}
+                  {cs && cs.count > 0 && (
+                    <>
+                      <span className="sp-course" style={{ color: courseColor(a, cs.avg) }}>
+                        Kurs Ø {fmtGrade(cs.avg ?? null)} ({cs.count})
+                      </span>
+                      {cs.min != null && cs.max != null && cs.min !== cs.max && (
+                        <span className="sp-courserange">Bandbreite {gradeRange(cs)}</span>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
               {s.modules.map((m, i) => {
                 const gn = gradeNum(m.grade)
                 const cm = courseStats?.modules[moduleKey(m)]
