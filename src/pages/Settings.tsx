@@ -431,10 +431,6 @@ function StundenplanSection({ profile }: { profile: Profile }) {
               }}
             />
           </label>
-          <small className="muted">
-            Für den Kursvergleich wird dein DUALIS-Login in deinem Relais gespeichert, damit deine Noten auch bei
-            geschlossener App im Hintergrund aktuell bleiben (live von allen). Es liegt nur dort – nicht in der Dropbox-Synchronisation.
-          </small>
           <div className="row">
             <button className="btn primary grow" disabled={!form.user || !form.pass} onClick={save}>
               {saved ? 'Gespeichert ✓' : 'Speichern'}

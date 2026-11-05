@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.37.2** – Kleinigkeit: Der zusätzliche Hinweistext zum Speichern des DUALIS-Logins im Login-Bereich wurde wieder entfernt (ist an anderer Stelle klar kommuniziert).
 - **1.37.1** – „Live von allen" jetzt auch ohne Push: Schon beim Speichern des DUALIS-Logins (mit eingestelltem Kurs) wird es im Relais hinterlegt, sodass der Cron die Kurs-Noten dieses Mitglieds im Hintergrund aktuell hält – auch wenn es die App direkt nach dem Login wieder schließt. Vorher ging das nur mit eingeschalteten Benachrichtigungen. Der Hinweis im Login-Bereich macht das Speichern des Logins transparent. Worker neu deployen nötig.
 - **1.37.0** – Mehr Benachrichtigungen (über das Relais): (1) Du bekommst eine Push-Nachricht, sobald **neue eigene Noten** in DUALIS auftauchen – auch bei geschlossener App. (2) **Admins** werden benachrichtigt, wenn ein **neues Mitglied** ihrem Kurs beitritt und wenn ein Mitglied **zum ersten Mal Noten meldet**. Jede Art hat jetzt einen eigenen Benachrichtigungs-Tag, sodass sich die Meldungen nicht gegenseitig überschreiben. Läuft über den vorhandenen Cron/Push-Weg (KV `PUSH`) – Worker neu deployen nötig.
 - **1.36.2** – Noten-Ansicht: Auch beim Semester stehen Kurs-Schnitt und Bandbreite jetzt rechts (unter dem eigenen Ø-Schnitt, farbig) statt als Zeile links unter der Überschrift – einheitlich mit der Modul-Darstellung.
