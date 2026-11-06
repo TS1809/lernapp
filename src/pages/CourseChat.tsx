@@ -45,19 +45,23 @@ export function CourseChat() {
   const [ready, setReady] = useState(false)
   const busy = useRef(false)
   const endRef = useRef<HTMLDivElement>(null)
+  // Lokal gesendete Nachrichten sichtbar halten, bis der Server sie listet (KV ist eventual consistent).
+  const pendingRef = useRef<ChatMessage[]>([])
 
   async function load() {
     if (busy.current) return
     busy.current = true
     try {
       const s = await listChat(profile.id)
-      setState((prev) => {
-        if (!s) return null
-        // noch nicht bestätigte eigene Nachrichten (optimistisch) behalten, bis der Server sie liefert
-        const pending = (prev?.messages ?? []).filter((m) => m.id.startsWith('tmp-'))
-        return { ...s, messages: [...s.messages, ...pending] }
-      })
-      if (s) markChatRead(s.course) // sichtbar = gelesen
+      if (s) {
+        const ids = new Set(s.messages.map((m) => m.id))
+        // vom Server bestätigte entfernen; alte Reste (>2 min) als Sicherheitsnetz verwerfen
+        pendingRef.current = pendingRef.current.filter((m) => !ids.has(m.id) && Date.now() - m.at < 120000)
+        setState({ ...s, messages: [...s.messages, ...pendingRef.current] })
+        markChatRead(s.course) // sichtbar = gelesen
+      } else {
+        setState(null)
+      }
       setError('')
     } catch (e) {
       setError((e as Error).message)
@@ -94,12 +98,15 @@ export function CourseChat() {
     // Eigene Nachricht sofort anzeigen (optimistisch); bei anderen erscheint sie beim nächsten Nachladen.
     const tmpId = 'tmp-' + Date.now()
     const temp: ChatMessage = { id: tmpId, memberId: state.memberId, name: profile.name, text: t, at: Date.now(), reactions: {} }
-    setState((s) => (s ? { ...s, messages: [...s.messages, temp] } : s))
+    pendingRef.current = [...pendingRef.current, temp]
+    setState((s) => (s ? { ...s, messages: [...s.messages.filter((m) => m.id !== tmpId), temp] } : s))
     try {
       const real = await sendChat(profile.id, t)
-      // Temp entfernen und die echte Nachricht einmalig einfügen (falls ein Poll sie schon geholt hat).
+      // Temp durch die echte Nachricht ersetzen; bleibt „pending", bis ein Server-Listing sie enthält.
+      pendingRef.current = pendingRef.current.map((m) => (m.id === tmpId ? real : m))
       setState((s) => (s ? { ...s, messages: [...s.messages.filter((m) => m.id !== tmpId && m.id !== real.id), real] } : s))
     } catch (e) {
+      pendingRef.current = pendingRef.current.filter((m) => m.id !== tmpId)
       setState((s) => (s ? { ...s, messages: s.messages.filter((m) => m.id !== tmpId) } : s))
       setError((e as Error).message)
       setText(t) // Text zurückgeben, damit man es erneut versuchen kann

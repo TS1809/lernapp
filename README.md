@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.38.1** – Kurschat-Fehlerbehebung: Eine gerade gesendete Nachricht blieb sichtbar, verschwand kurz und kam dann wieder (das Relais/der KV-Speicher ist „eventual consistent" und listete sie erst verzögert). Jetzt bleiben selbst gesendete Nachrichten durchgehend sichtbar, bis der Server sie wirklich zurückliefert.
 - **1.38.0** – Kurschat-Verbesserungen: (1) Eigene Nachrichten erscheinen beim Senden **sofort** (optimistisch) – bei den anderen tauchen sie wie gehabt beim nächsten Nachladen auf. (2) Unter jeder Nachricht steht jetzt, **wer welche Reaktion** gemacht hat (Namen statt nur Anzahl). (3) Neue, ungelesene Nachrichten werden direkt auf der **Dashboard-Kachel** als Zahl angezeigt – ohne den Chat öffnen zu müssen. Für die Reaktions-Namen liefert das Relais die Mitgliedernamen mit – Worker neu deployen nötig.
 - **1.37.2** – Kleinigkeit: Der zusätzliche Hinweistext zum Speichern des DUALIS-Logins im Login-Bereich wurde wieder entfernt (ist an anderer Stelle klar kommuniziert).
 - **1.37.1** – „Live von allen" jetzt auch ohne Push: Schon beim Speichern des DUALIS-Logins (mit eingestelltem Kurs) wird es im Relais hinterlegt, sodass der Cron die Kurs-Noten dieses Mitglieds im Hintergrund aktuell hält – auch wenn es die App direkt nach dem Login wieder schließt. Vorher ging das nur mit eingeschalteten Benachrichtigungen. Der Hinweis im Login-Bereich macht das Speichern des Logins transparent. Worker neu deployen nötig.
