@@ -88,6 +88,23 @@ export async function onboard(page: Page, { name = 'Test', kind = 'Dual' }: { na
   await page.getByRole('radio', { name: new RegExp(`^${kind}`) }).click()
   await page.getByRole('button', { name: 'Los geht’s' }).click()
   await expect(page.locator('.widget').first()).toBeVisible()
+  // Lern-Kacheln sind seit dem Orga-App-Umbau standardmäßig aus; die Tests brauchen sie eingeblendet.
+  await enableLernkacheln(page)
+}
+
+/** Blendet die (standardmäßig ausgeblendeten) Lern-Kacheln über die Einstellungen ein. */
+export async function enableLernkacheln(page: Page) {
+  await page.goto('./#/einstellungen')
+  const labels = ['Unterwegs (Karten lernen)', 'Schreibtisch (Rechenaufgaben)', 'Nächste Klausur', 'Lernserie', 'Kartenpaket importieren']
+  for (const label of labels) {
+    const box = page.getByRole('checkbox', { name: label })
+    if (await box.isChecked()) continue
+    // Kontrollierte Checkbox via Live-Query: klicken und auf den persistierten Zustand warten.
+    await box.click()
+    await expect(box).toBeChecked()
+  }
+  await page.goto('./')
+  await expect(page.locator('.widget').first()).toBeVisible()
 }
 
 export const isoIn = (days: number) => {

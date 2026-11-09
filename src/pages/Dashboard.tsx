@@ -157,14 +157,14 @@ export function Dashboard() {
             <div className="w-headline">Erste Prüfung anlegen</div>
             <p className="w-caption">Mit Termin und Wichtigkeit – danach Karten importieren und die App plant dein Lernen.</p>
           </Widget>
-        ) : cards.length === 0 && homework.length === 0 ? (
+        ) : profile.tileImport && cards.length === 0 && homework.length === 0 ? (
           <Widget size="medium" to="/import" title="Loslegen" icon="download">
             <div className="w-headline">Karten importieren</div>
             <p className="w-caption">Lade ein Kartenpaket für eine deiner Prüfungen – oder probiere das Beispielpaket aus.</p>
           </Widget>
         ) : (
           <>
-          {modes.map((m) => {
+          {modes.filter((m) => (m === 'mobile' ? profile.tileMobile : profile.tileDesk)).map((m) => {
             const t = plan.modes[m]
             const hwCount = m === 'desk' ? hwDue.length : 0
             const left = t.reviewsLeft + t.newLeft + hwCount
@@ -280,7 +280,7 @@ export function Dashboard() {
           </Widget>
         )}
 
-        {next && nextPlan && (
+        {profile.tileNextExam && next && nextPlan && (
           <Widget size="small" to={`/pruefung/${next.id}`} title="Nächste Klausur" icon="clock" tint={next.color}>
             <div className="w-number">{nextPlan.daysLeft}</div>
             <div className="w-caption">{nextPlan.daysLeft === 1 ? 'Tag' : 'Tage'}</div>
@@ -340,20 +340,24 @@ export function Dashboard() {
           </Widget>
         )}
 
-        <Widget size="small" to="/pruefungen" title="Lernserie" icon="flame" tint="var(--hard)">
-          <div className="w-number">{days}</div>
-          <div className="w-caption">{days === 1 ? 'Tag' : 'Tage'} in Folge</div>
-          <DayBars values={shares} labels={dayLabels} max={1} />
-        </Widget>
+        {profile.tileStreak && (
+          <Widget size="small" to="/pruefungen" title="Lernserie" icon="flame" tint="var(--hard)">
+            <div className="w-number">{days}</div>
+            <div className="w-caption">{days === 1 ? 'Tag' : 'Tage'} in Folge</div>
+            <DayBars values={shares} labels={dayLabels} max={1} />
+          </Widget>
+        )}
 
         {profile.stundenplan && <NotenKachel profileId={profile.id} />}
 
         {profile.stundenplan && <KurschatKachel profileId={profile.id} />}
 
-        <Widget size="small" to="/import" title="Importieren" icon="download">
-          <div className="w-headline">Karten&shy;paket hinzufügen</div>
-          <div className="w-foot">Neu oder Update</div>
-        </Widget>
+        {profile.tileImport && (
+          <Widget size="small" to="/import" title="Importieren" icon="download">
+            <div className="w-headline">Karten&shy;paket hinzufügen</div>
+            <div className="w-foot">Neu oder Update</div>
+          </Widget>
+        )}
 
 
       </div>

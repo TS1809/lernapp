@@ -29,6 +29,12 @@ export interface Profile extends Synced {
   ideas?: { id: string; text: string; createdAt: number }[]
   /** Sokratisches Lernen (Test): Leitfragen und Kernpunkte in der Lernsitzung zeigen. Standard: aus. */
   socratic?: boolean
+  /** Startseite: einzelne Lern-Kacheln einblenden (Orga-App – Standard: alle aus, in den Einstellungen einschaltbar). */
+  tileMobile?: boolean // „Unterwegs" (Karten lernen)
+  tileDesk?: boolean // „Schreibtisch" (Rechenaufgaben)
+  tileNextExam?: boolean // „Nächste Klausur"
+  tileStreak?: boolean // „Lernserie"
+  tileImport?: boolean // „Kartenpaket hinzufügen" / Import
   /** Stundenplan & Noten aus DUALIS über ein Relais (Test). Standard: aus. Die Zugangsdaten liegen gerätelokal in `meta`, nicht im synchronisierten Profil. */
   stundenplan?: boolean
   /** Bereits aus dem DUALIS-Stundenplan übernommene Prüfungen (dualisKey je Klausur), damit keine Dubletten entstehen und gelöschte nicht erneut angelegt werden. */

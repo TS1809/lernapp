@@ -154,6 +154,27 @@ export function Settings() {
         </Link>
       </div>
 
+      <div className="section-title">Startseite-Kacheln</div>
+      <div className="card stack">
+        <small className="muted" style={{ marginTop: -2 }}>
+          Die Lern-Kacheln sind standardmäßig ausgeblendet. Hier kannst du sie einzeln wieder einblenden.
+        </small>
+        {(
+          [
+            ['tileMobile', 'Unterwegs (Karten lernen)'],
+            ['tileDesk', 'Schreibtisch (Rechenaufgaben)'],
+            ['tileNextExam', 'Nächste Klausur'],
+            ['tileStreak', 'Lernserie'],
+            ['tileImport', 'Kartenpaket importieren'],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="row" style={{ gap: 10, alignItems: 'center' }}>
+            <input type="checkbox" checked={!!profile[key]} onChange={(e) => update({ [key]: e.target.checked } as Partial<Profile>)} />
+            <span style={{ fontSize: 15 }}>{label}</span>
+          </label>
+        ))}
+      </div>
+
       <div className="section-title">Stundenplan & Noten (Test)</div>
       <StundenplanSection profile={profile} />
 
