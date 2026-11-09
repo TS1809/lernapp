@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useActive } from '../state'
 import { PageHeader, Widget } from '../components/ui'
 import {
@@ -8,9 +8,11 @@ import {
   average,
   cachedGrades,
   cachedTimetable,
+  clearTimetableChanges,
   configReady,
   fmtGrade,
   getConfig,
+  getTimetableChanges,
   gradeNum,
   hhmm,
   importExamsFromCache,
@@ -20,9 +22,11 @@ import {
   mondayOf,
   refreshGrades,
   refreshTimetable,
+  sigOf,
   type CachedGrades,
   type CachedTimetable,
   type StundenplanConfig,
+  type TimetableChange,
   type TimetableEvent,
 } from '../lib/stundenplan'
 import { gradeRange, moduleKey, submitCourseGrade, type CourseGradeStats } from '../lib/course'
@@ -133,6 +137,9 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
   const [status, setStatus] = useState('')
   const [detail, setDetail] = useState<TimetableEvent | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [changes, setChanges] = useState<TimetableChange[]>([])
+  const pendingSig = useRef<string | null>(null)
+  const [params, setParams] = useSearchParams()
 
   // Angezeigte Woche laden: erst Zwischenspeicher, dann frisch aus DUALIS.
   useEffect(() => {
@@ -204,6 +211,46 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
     setSheetOpen(true)
   }
 
+  // Erkannte Änderungen vom Relais laden (werden auch im Plan angezeigt).
+  useEffect(() => {
+    let cancelled = false
+    getTimetableChanges(cfg).then((c) => { if (!cancelled) setChanges(c) }).catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [cfg.user, cfg.pass])
+
+  // Deeplink aus der Push-Benachrichtigung: zur betroffenen Woche springen und die Vorlesung öffnen.
+  // Auf Parameter-Änderungen reagieren, damit es auch bei bereits geöffneter App greift.
+  useEffect(() => {
+    const spweek = params.get('spweek')
+    const spsig = params.get('spsig')
+    if (!spweek) return
+    setMonday(mondayOf(new Date(spweek + 'T00:00')))
+    if (spsig) pendingSig.current = spsig
+    setParams({}, { replace: true }) // Parameter wieder aus der Adresse räumen
+  }, [params, setParams])
+
+  // Sobald die Zielwoche geladen ist, die verlinkte Vorlesung aufklappen.
+  useEffect(() => {
+    if (!pendingSig.current || !tt) return
+    const ev = tt.events.find((e) => sigOf(e) === pendingSig.current)
+    if (ev) {
+      setDetail(ev)
+      setSheetOpen(true)
+      pendingSig.current = null
+    }
+  }, [tt])
+
+  function jumpTo(c: TimetableChange) {
+    setMonday(mondayOf(new Date(c.week + 'T00:00')))
+    pendingSig.current = c.sig
+  }
+  async function dismissChanges() {
+    setChanges([])
+    await clearTimetableChanges(cfg)
+  }
+
   // Wischen: links = nächste Woche, rechts = vorige Woche.
   const touch = useRef({ x: 0, y: 0, t: 0 })
   function onTouchStart(e: React.TouchEvent) {
@@ -222,6 +269,7 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
   const fr = addDays(monday, 4)
   const label = `${two(monday.getDate())}.${two(monday.getMonth() + 1)}. – ${two(fr.getDate())}.${two(fr.getMonth() + 1)}.${fr.getFullYear()}`
   const events = (tt?.events ?? []).filter((e) => weekdayIndex(e.start) < 5)
+  const changedSigs = new Set(changes.map((c) => c.sig))
   const todayIso = isoOf(new Date())
   const H = (DE - DS) * PPM
   const hours: number[] = []
@@ -229,6 +277,18 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
 
   return (
     <section className="sp-viewplan" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {changes.length > 0 && (
+        <div className="sp-changes">
+          <div className="sp-changes-head">
+            <b>Stundenplan-Änderungen</b>
+            <button className="chat-tool" onClick={dismissChanges}>Gelesen</button>
+          </div>
+          {changes.slice(0, 6).map((c) => (
+            <button key={c.sig + c.kind} className="sp-change-item" onClick={() => jumpTo(c)}>{c.text}</button>
+          ))}
+          {changes.length > 6 && <small className="muted">+ {changes.length - 6} weitere</small>}
+        </div>
+      )}
       <div className="sp-weeknav">
         <button onClick={() => setMonday(addDays(monday, -7))} aria-label="vorige Woche">‹</button>
         <button onClick={() => setMonday(mondayOf(new Date()))}>Heute</button>
@@ -273,10 +333,11 @@ function PlanView({ profileId, semesterId, cfg }: { profileId: string; semesterI
                 return (
                   <button
                     key={j}
-                    className={`sp-block${e.isTest ? ' exam' : ''}`}
+                    className={`sp-block${e.isTest ? ' exam' : ''}${changedSigs.has(sigOf(e)) ? ' sp-changed' : ''}`}
                     style={{ top: PAD + (s - DS) * PPM, height: Math.max(22, (en - s) * PPM - 2) }}
                     onClick={() => open(e)}
                   >
+                    {changedSigs.has(sigOf(e)) && <span className="sp-changedot" aria-label="geändert" />}
                     <div className="sp-bt">
                       {hhmm(e.start)}
                       {e.isTest ? ' • Prüfung' : ''}

@@ -58,6 +58,21 @@ export interface CachedGrades {
   semesters: GradeSemester[]
 }
 
+/** Vom Relais-Cron erkannte Stundenplan-Änderung (für Anzeige im Plan + Push-Deeplink). */
+export interface TimetableChange {
+  kind: 'new' | 'changed' | 'removed' | 'exam'
+  text: string
+  week: string
+  date: string
+  sig: string
+  at: number
+}
+
+/** Signatur eines Termins – muss zur `sigId`-Bildung im Relais passen. */
+export function sigOf(e: { start: string; shortName?: string | null }): string {
+  return `${e.start.slice(0, 10)}|${e.start.slice(11, 16)}|${e.shortName || ''}`
+}
+
 const cfgKey = (profileId: string) => `stundenplan:cfg:${profileId}`
 const ttKey = (profileId: string, iso: string) => `stundenplan:tt:${profileId}:${iso}`
 const grKey = (profileId: string) => `stundenplan:grades:${profileId}`
@@ -89,6 +104,25 @@ async function relayFetch<T>(cfg: StundenplanConfig, path: string): Promise<T> {
 
 export async function cachedTimetable(profileId: string, iso: string): Promise<CachedTimetable | undefined> {
   return (await db.meta.get(ttKey(profileId, iso)))?.value as CachedTimetable | undefined
+}
+
+/** Zuletzt erkannte Stundenplan-Änderungen vom Relais holen. */
+export async function getTimetableChanges(cfg: StundenplanConfig): Promise<TimetableChange[]> {
+  try {
+    const data = await relayFetch<{ items?: TimetableChange[] }>(cfg, '/changes')
+    return data.items ?? []
+  } catch {
+    return []
+  }
+}
+
+/** Stundenplan-Änderungen als gelesen markieren (serverseitig entfernen). */
+export async function clearTimetableChanges(cfg: StundenplanConfig): Promise<void> {
+  try {
+    await relayFetch(cfg, '/changes/seen')
+  } catch {
+    // nicht schlimm – beim nächsten Lauf erneut versuchbar
+  }
 }
 
 export async function refreshTimetable(profileId: string, cfg: StundenplanConfig, iso: string, noDozent = false): Promise<CachedTimetable> {
