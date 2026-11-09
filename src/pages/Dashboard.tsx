@@ -20,6 +20,7 @@ import { FSRS_HINT_REVIEWS } from './FsrsSettings'
 import { dayShare, dayWork, weekShares } from '../lib/dayProgress'
 import { DashboardStundenplan, NotenKachel } from './Stundenplan'
 import { KurschatKachel } from './CourseChat'
+import { TermineKachel } from './CourseEvents'
 import { syncCourse } from '../lib/course'
 
 export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string; extra: number }> = {
@@ -351,6 +352,8 @@ export function Dashboard() {
         {profile.stundenplan && <NotenKachel profileId={profile.id} />}
 
         {profile.stundenplan && <KurschatKachel profileId={profile.id} />}
+
+        {profile.stundenplan && <TermineKachel profileId={profile.id} />}
 
         {profile.tileImport && (
           <Widget size="small" to="/import" title="Importieren" icon="download">

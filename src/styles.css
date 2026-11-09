@@ -622,6 +622,9 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .chat-react { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--separator); background: var(--surface-2); border-radius: 999px; padding: 2px 8px; font-size: 13px; cursor: pointer; color: var(--text); }
 .chat-react.on { background: var(--accent-soft); border-color: var(--accent); }
+.event-voters { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.event-voters > span { display: inline-flex; align-items: baseline; gap: 4px; }
+.event-past { opacity: 0.6; }
 .chat-reactors { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11px; color: var(--muted); }
 .chat-reactor { display: inline-flex; align-items: baseline; gap: 4px; }
 .chat-reactor-e { font-size: 12px; }
