@@ -41,17 +41,17 @@ test('Mensa Horb: Speiseplan + Campus-Ausgrauen', async ({ page, context }) => {
   await page.goto('./')
   await expect(page.getByText('Mathe III')).toBeVisible()
 
-  // Mensa-Seite
+  // Speiseplan-Seite: Wochenansicht
   await page.goto('./#/mensa')
-  await expect(page.getByText('Kichererbsen-Curry mit Duftreis')).toBeVisible()
-  await expect(page.getByText('€ 5,10 / 8,10 / 8,60')).toBeVisible()
+  await expect(page.getByText('Kichererbsen-Curry mit Duftreis').first()).toBeVisible()
+  await expect(page.getByText(/Mittwoch 11\.11\./)).toBeVisible()
+  // Nur der erste Preis wird angezeigt, die anderen beiden nicht mehr.
+  await expect(page.getByText('€ 5,10').first()).toBeVisible()
+  await expect(page.getByText('/ 8,10 /')).toHaveCount(0)
   await expect(page.getByText('vegan').first()).toBeVisible()
-
-  // Freie Tage sind ausgegraut
-  await expect(page.locator('.mensa-day.off').first()).toBeVisible()
-  // Montag (frei) wählen → Hinweis
-  await page.locator('.mensa-day').filter({ hasText: 'Mo' }).click()
-  await expect(page.getByText(/nicht am Campus/)).toBeVisible()
+  // Freie Tage sind ausgegraut und markiert, bleiben aber sichtbar.
+  await expect(page.locator('.mensa-off').first()).toBeVisible()
+  await expect(page.getByText('nicht am Campus').first()).toBeVisible()
 
   expect(errors).toEqual([])
 })

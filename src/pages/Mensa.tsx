@@ -4,19 +4,10 @@ import { PageHeader, Widget } from '../components/ui'
 import { addDays, cachedTimetable, isoOf, mondayOf, type TimetableEvent } from '../lib/stundenplan'
 import { DIET_LABEL, getMensa, onCampus, type MensaItem } from '../lib/mensa'
 
-const SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr']
+const DAYSFULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 const pad = (n: number) => String(n).padStart(2, '0')
 const isoLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-function todayIso(): string {
-  return isoLocal(new Date())
-}
-/** Heute, aber am Wochenende auf Montag (Mensa Mo–Fr). */
-function defaultDay(): string {
-  const d = new Date()
-  const wd = (d.getDay() + 6) % 7
-  if (wd > 4) d.setDate(d.getDate() + (7 - wd))
-  return isoLocal(d)
-}
+const todayIso = () => isoLocal(new Date())
 
 function DietChip({ code }: { code: string }) {
   const label = DIET_LABEL[code] || code
@@ -24,14 +15,15 @@ function DietChip({ code }: { code: string }) {
   return <span className="mensa-diet" style={green ? { color: 'var(--good)', borderColor: 'var(--good)' } : undefined}>{label}</span>
 }
 
-function MensaList({ items }: { items: MensaItem[] }) {
-  if (items.length === 0) return <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>Für diesen Tag ist kein Speiseplan hinterlegt.</p>
+/** Speiseplan eines Tages (Kategorien + Gerichte, nur der erste – studentische – Preis). */
+function DayMenu({ items }: { items: MensaItem[] }) {
+  if (items.length === 0) return <p className="muted" style={{ margin: 0, fontSize: 13 }}>Kein Speiseplan.</p>
   const cats: string[] = []
   for (const it of items) if (!cats.includes(it.category)) cats.push(it.category)
   return (
     <>
       {cats.map((cat) => (
-        <div key={cat} className="card stack" style={{ gap: 8 }}>
+        <div key={cat} className="mensa-catblock">
           <div className="mensa-cat">{cat}</div>
           {items
             .filter((it) => it.category === cat)
@@ -41,7 +33,7 @@ function MensaList({ items }: { items: MensaItem[] }) {
                   <div className="mensa-name">{it.name}</div>
                   {it.icons.length > 0 && <div className="mensa-diets">{it.icons.map((c) => <DietChip key={c} code={c} />)}</div>}
                 </div>
-                {it.prices.length === 3 && <div className="mensa-price">€ {it.prices.join(' / ')}</div>}
+                {it.prices[0] && <div className="mensa-price">€ {it.prices[0]}</div>}
               </div>
             ))}
         </div>
@@ -50,25 +42,34 @@ function MensaList({ items }: { items: MensaItem[] }) {
   )
 }
 
-/** Dashboard-Kachel: Mensa Horb mit dem heutigen Hauptgericht als Teaser. */
-export function MensaKachel({ profileId }: { profileId: string }) {
-  const [teaser, setTeaser] = useState<string | null>(null)
+/** Dashboard-Kachel „Speiseplan": Übersicht des heutigen Tages (nur erster Preis). */
+export function SpeiseplanKachel({ profileId }: { profileId: string }) {
+  const [items, setItems] = useState<MensaItem[] | null>(null)
   useEffect(() => {
     let cancelled = false
     getMensa(todayIso())
-      .then((items) => {
-        if (cancelled) return
-        const main = items.find((i) => /HAUPT/i.test(i.category)) || items[0]
-        setTeaser(main ? main.name : 'Heute kein Speiseplan')
-      })
-      .catch(() => { if (!cancelled) setTeaser(null) })
+      .then((it) => { if (!cancelled) setItems(it) })
+      .catch(() => { if (!cancelled) setItems([]) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId])
   return (
-    <Widget size="small" to="/mensa" title="Mensa" icon="today">
-      <div className="w-headline">Mensa Horb</div>
-      <div className="w-foot truncate">{teaser ?? 'Speiseplan'}</div>
+    <Widget size="medium" to="/mensa" title="Speiseplan" icon="today">
+      <div className="w-headline">Mensa Horb – heute</div>
+      {items === null ? (
+        <div className="w-foot">Lädt …</div>
+      ) : items.length === 0 ? (
+        <div className="w-foot">Heute kein Speiseplan</div>
+      ) : (
+        <div className="mensa-widget">
+          {items.slice(0, 4).map((it, i) => (
+            <div key={i} className="mensa-widget-row">
+              <span className="truncate">{it.name}</span>
+              {it.prices[0] && <span className="mensa-widget-price">€ {it.prices[0]}</span>}
+            </div>
+          ))}
+          {items.length > 4 && <div className="w-foot" style={{ marginTop: 2 }}>+ {items.length - 4} weitere</div>}
+        </div>
+      )}
     </Widget>
   )
 }
@@ -76,12 +77,11 @@ export function MensaKachel({ profileId }: { profileId: string }) {
 export function Mensa() {
   const { profile } = useActive()
   const [monday, setMonday] = useState(() => mondayOf(new Date()))
-  const [date, setDate] = useState(() => defaultDay())
-  const [items, setItems] = useState<MensaItem[]>([])
+  const [byDay, setByDay] = useState<Record<string, MensaItem[]>>({})
   const [status, setStatus] = useState('Lädt …')
   const [events, setEvents] = useState<TimetableEvent[] | null>(null)
 
-  // Stundenplan der Woche (aus dem Zwischenspeicher) für die Campus-Erkennung.
+  // Stundenplan der Woche (Zwischenspeicher) für die Campus-Erkennung.
   useEffect(() => {
     let cancelled = false
     cachedTimetable(profile.id, isoOf(monday))
@@ -90,59 +90,60 @@ export function Mensa() {
     return () => { cancelled = true }
   }, [profile.id, monday])
 
-  // Speiseplan des gewählten Tages laden.
+  // Speiseplan aller Wochentage (Mo–Fr) laden.
   useEffect(() => {
     let cancelled = false
     setStatus('Lädt …')
-    getMensa(date)
-      .then((it) => { if (!cancelled) { setItems(it); setStatus('') } })
-      .catch((e) => { if (!cancelled) { setItems([]); setStatus((e as Error).message || 'Speiseplan gerade nicht erreichbar') } })
+    setByDay({})
+    const isos = [0, 1, 2, 3, 4].map((i) => isoLocal(addDays(monday, i)))
+    Promise.all(isos.map((iso) => getMensa(iso).then((items) => [iso, items] as const).catch(() => [iso, [] as MensaItem[]] as const)))
+      .then((pairs) => {
+        if (cancelled) return
+        const m: Record<string, MensaItem[]> = {}
+        for (const [iso, items] of pairs) m[iso] = items
+        setByDay(m)
+        setStatus('')
+      })
     return () => { cancelled = true }
-  }, [date])
+  }, [profile.id, monday])
 
   const dayIsos = [0, 1, 2, 3, 4].map((i) => isoLocal(addDays(monday, i)))
   const campusKnown = events !== null
-  const campusByDay = dayIsos.map((iso) => onCampus((events ?? []).filter((e) => e.start.slice(0, 10) === iso)))
+  const today = todayIso()
   const fr = addDays(monday, 4)
   const weekLabel = `${pad(monday.getDate())}.${pad(monday.getMonth() + 1)}. – ${pad(fr.getDate())}.${pad(fr.getMonth() + 1)}.`
 
   return (
     <>
-      <PageHeader back title="Mensa Horb" />
+      <PageHeader back title="Speiseplan Horb" />
 
       <div className="sp-weeknav">
         <button onClick={() => setMonday(addDays(monday, -7))} aria-label="vorige Woche">‹</button>
-        <button onClick={() => { const m = mondayOf(new Date()); setMonday(m); setDate(defaultDay()) }}>Heute</button>
+        <button onClick={() => setMonday(mondayOf(new Date()))}>Heute</button>
         <button onClick={() => setMonday(addDays(monday, 7))} aria-label="nächste Woche">›</button>
         <span className="sp-weeklabel">{weekLabel}</span>
       </div>
 
-      <div className="mensa-days">
-        {SHORT.map((sh, i) => {
-          const iso = dayIsos[i]
+      {status ? (
+        <div className="sp-status">{status}</div>
+      ) : (
+        dayIsos.map((iso, i) => {
           const d = addDays(monday, i)
-          const off = campusKnown && !campusByDay[i]
+          const off = campusKnown && !onCampus((events ?? []).filter((e) => e.start.slice(0, 10) === iso))
           return (
-            <button
-              key={iso}
-              className={`mensa-day${iso === date ? ' active' : ''}${off ? ' off' : ''}`}
-              onClick={() => setDate(iso)}
-              title={off ? 'Laut Stundenplan nicht am Campus' : undefined}
-            >
-              {sh}
-              <span>{pad(d.getDate())}.{pad(d.getMonth() + 1)}.</span>
-            </button>
+            <div key={iso} className={`card stack mensa-daycard${off ? ' mensa-off' : ''}`} style={{ gap: 8 }}>
+              <div className="mensa-dayhead">
+                <b>{DAYSFULL[i]} {pad(d.getDate())}.{pad(d.getMonth() + 1)}.</b>
+                {iso === today && <span className="chip accent">heute</span>}
+                {off && <span className="chip">nicht am Campus</span>}
+              </div>
+              <DayMenu items={byDay[iso] ?? []} />
+            </div>
           )
-        })}
-      </div>
-
-      {campusKnown && !campusByDay[dayIsos.indexOf(date)] && (
-        <p className="muted" style={{ fontSize: 13, margin: '0 0 10px' }}>An diesem Tag bist du laut Stundenplan nicht am Campus.</p>
+        })
       )}
 
-      {status ? <div className="sp-status">{status}</div> : <MensaList items={items} />}
-
-      <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>Preise: Studierende / Bedienstete / Gäste. Quelle: Studierendenwerk Stuttgart.</p>
+      <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>Preis für Studierende. Quelle: Studierendenwerk Stuttgart.</p>
     </>
   )
 }
