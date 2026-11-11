@@ -23,6 +23,7 @@ import { Documents } from './pages/Documents'
 import { Noten } from './pages/Stundenplan'
 import { CourseChat } from './pages/CourseChat'
 import { CourseEvents } from './pages/CourseEvents'
+import { Mensa } from './pages/Mensa'
 import { SyncProvider } from './sync-state'
 import { ErrorBoundary, UpdateBanner } from './components/AppChrome'
 
@@ -82,6 +83,7 @@ function Shell() {
         <Route path="/noten" element={<Noten />} />
         <Route path="/kurschat" element={<CourseChat />} />
         <Route path="/termine" element={<CourseEvents />} />
+        <Route path="/mensa" element={<Mensa />} />
         <Route path="/semester/:id" element={<SemesterForm />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>
