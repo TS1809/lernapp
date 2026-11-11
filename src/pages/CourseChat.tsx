@@ -3,7 +3,7 @@ import { useActive } from '../state'
 import { PageHeader, Widget } from '../components/ui'
 import { chatUnreadCount, deleteChat, keepChat, listChat, markChatRead, reactChat, sendChat, type ChatMessage, type ChatState } from '../lib/chat'
 
-const EMOJIS = ['👍', '🔥', '😂', '❤️', '✅', '❓']
+const EMOJIS = ['👍', '👎', '🔥', '😂', '❤️', '✅', '❓']
 
 /** Dashboard-Kachel mit Ungelesen-Zähler (ohne den Chat öffnen zu müssen). */
 export function KurschatKachel({ profileId }: { profileId: string }) {
