@@ -564,6 +564,8 @@ details.explain[open] > summary::after { transform: rotate(90deg); }
 .mensa-dayhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mensa-dayhead b { font-size: 15px; }
 .mensa-off { opacity: 0.55; }
+.mensa-week { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.mensa-col { flex: 0 0 auto; width: 15rem; max-width: 82vw; align-self: flex-start; scroll-snap-align: start; margin: 0; }
 .mensa-catblock { }
 .mensa-widget { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
 .mensa-widget-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; align-items: baseline; }

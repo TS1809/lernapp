@@ -49,6 +49,11 @@ export async function getMensa(date: string): Promise<MensaItem[]> {
   }
 }
 
+/** Nur die „richtigen" Gerichte – Beilagen und Desserts werden generell ausgeblendet. */
+export function mainDishes(items: MensaItem[]): MensaItem[] {
+  return items.filter((it) => !/beilage|dessert/i.test(it.category))
+}
+
 /** Raum im „E"-Gebäude (anderes Gebäude): ein E direkt vor einer Zahl. */
 export function isEBuildingRoom(room?: string | null): boolean {
   return /(^|[-\s])E\s?\d/i.test(String(room || ''))

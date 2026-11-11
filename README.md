@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.43.1** – Speiseplan: Wochenansicht jetzt **waagerecht** (Tage nebeneinander, horizontal scrollbar); **Beilagen und Desserts** werden generell nicht mehr angezeigt (auch nicht in der Kachel).
 - **1.43.0** – Speiseplan überarbeitet: Die Kachel heißt jetzt „Speiseplan" und zeigt direkt die heutige Übersicht; der Klick öffnet eine **Wochenansicht** (Mo–Fr untereinander) statt der Tagesansicht. Es wird nur noch der erste (studentische) Preis angezeigt. Nicht-Campus-Tage bleiben ausgegraut, aber einsehbar.
 - **1.42.1** – Kurschat: 👎 als zusätzliche Reaktion.
 - **1.42.0** – Mensa-Speiseplan Horb: Neue Seite „Mensa" (Dashboard-Kachel mit dem heutigen Hauptgericht) mit dem Speiseplan des Studierendenwerks Stuttgart für die Mensa Horb – Gerichte je Tag mit Kategorien, Preisen (Studis/Bedienstete/Gäste) und Kennzeichen (vegan/vegetarisch u. a.), Wochen-Navigation. Tage, an denen man laut Stundenplan nicht am Campus ist (frei oder nur Räume im „E"-Gebäude), werden ausgegraut, bleiben aber einsehbar. Holt den Plan über das eigene Relais (neuer `/mensa`-Endpunkt) – Worker neu deployen nötig.

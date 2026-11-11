@@ -5,6 +5,8 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const MENU = [
   { category: 'VEGANER RENNER', name: 'Kichererbsen-Curry mit Duftreis', prices: ['2,99', '5,99', '6,49'], icons: ['VG', 'VR'] },
   { category: 'HAUPTGERICHT', name: 'Hähnchenbrustfilet Piccata Milanese', prices: ['5,10', '8,10', '8,60'], icons: ['G'] },
+  { category: 'BEILAGE', name: 'Beilagensalat', prices: ['0,99', '1,39', '1,79'], icons: ['VG'] },
+  { category: 'DESSERT', name: 'Schokopudding', prices: ['1,29', '1,69', '2,09'], icons: ['VG'] },
 ]
 
 test('Mensa Horb: Speiseplan + Campus-Ausgrauen', async ({ page, context }) => {
@@ -49,6 +51,9 @@ test('Mensa Horb: Speiseplan + Campus-Ausgrauen', async ({ page, context }) => {
   await expect(page.getByText('€ 5,10').first()).toBeVisible()
   await expect(page.getByText('/ 8,10 /')).toHaveCount(0)
   await expect(page.getByText('vegan').first()).toBeVisible()
+  // Beilagen und Desserts werden generell nicht angezeigt.
+  await expect(page.getByText('Beilagensalat')).toHaveCount(0)
+  await expect(page.getByText('Schokopudding')).toHaveCount(0)
   // Freie Tage sind ausgegraut und markiert, bleiben aber sichtbar.
   await expect(page.locator('.mensa-off').first()).toBeVisible()
   await expect(page.getByText('nicht am Campus').first()).toBeVisible()

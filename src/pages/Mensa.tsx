@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useActive } from '../state'
 import { PageHeader, Widget } from '../components/ui'
 import { addDays, cachedTimetable, isoOf, mondayOf, type TimetableEvent } from '../lib/stundenplan'
-import { DIET_LABEL, getMensa, onCampus, type MensaItem } from '../lib/mensa'
+import { DIET_LABEL, getMensa, mainDishes, onCampus, type MensaItem } from '../lib/mensa'
 
 const DAYSFULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -48,7 +48,7 @@ export function SpeiseplanKachel({ profileId }: { profileId: string }) {
   useEffect(() => {
     let cancelled = false
     getMensa(todayIso())
-      .then((it) => { if (!cancelled) setItems(it) })
+      .then((it) => { if (!cancelled) setItems(mainDishes(it)) })
       .catch(() => { if (!cancelled) setItems([]) })
     return () => { cancelled = true }
   }, [profileId])
@@ -127,20 +127,22 @@ export function Mensa() {
       {status ? (
         <div className="sp-status">{status}</div>
       ) : (
-        dayIsos.map((iso, i) => {
-          const d = addDays(monday, i)
-          const off = campusKnown && !onCampus((events ?? []).filter((e) => e.start.slice(0, 10) === iso))
-          return (
-            <div key={iso} className={`card stack mensa-daycard${off ? ' mensa-off' : ''}`} style={{ gap: 8 }}>
-              <div className="mensa-dayhead">
-                <b>{DAYSFULL[i]} {pad(d.getDate())}.{pad(d.getMonth() + 1)}.</b>
-                {iso === today && <span className="chip accent">heute</span>}
-                {off && <span className="chip">nicht am Campus</span>}
+        <div className="mensa-week">
+          {dayIsos.map((iso, i) => {
+            const d = addDays(monday, i)
+            const off = campusKnown && !onCampus((events ?? []).filter((e) => e.start.slice(0, 10) === iso))
+            return (
+              <div key={iso} className={`card stack mensa-col${off ? ' mensa-off' : ''}`} style={{ gap: 8 }}>
+                <div className="mensa-dayhead">
+                  <b>{DAYSFULL[i]} {pad(d.getDate())}.{pad(d.getMonth() + 1)}.</b>
+                  {iso === today && <span className="chip accent">heute</span>}
+                  {off && <span className="chip">nicht am Campus</span>}
+                </div>
+                <DayMenu items={mainDishes(byDay[iso] ?? [])} />
               </div>
-              <DayMenu items={byDay[iso] ?? []} />
-            </div>
-          )
-        })
+            )
+          })}
+        </div>
       )}
 
       <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>Preis für Studierende. Quelle: Studierendenwerk Stuttgart.</p>
