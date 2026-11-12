@@ -54,6 +54,28 @@ export function mainDishes(items: MensaItem[]): MensaItem[] {
   return items.filter((it) => !/vorspeise|beilage|dessert/i.test(it.category))
 }
 
+/** Vegetarisch (inkl. vegan) – nur ausdrücklich gekennzeichnete Gerichte gelten als fleisch-/fischfrei. */
+export function isVegetarian(it: MensaItem): boolean {
+  return it.icons.some((c) => c === 'VG' || c === 'V' || c === 'VR')
+}
+
+const VEG_KEY = 'lernapp:mensa:vegOnly'
+/** Vegetarisch-Filter an? (gerätelokal gemerkt) */
+export function getVegOnly(): boolean {
+  try {
+    return localStorage.getItem(VEG_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+export function setVegOnly(on: boolean): void {
+  try {
+    localStorage.setItem(VEG_KEY, on ? '1' : '0')
+  } catch {
+    // ohne localStorage greift der Filter nur für die aktuelle Ansicht
+  }
+}
+
 /** Raum im „E"-Gebäude (anderes Gebäude): ein E direkt vor einer Zahl. */
 export function isEBuildingRoom(room?: string | null): boolean {
   return /(^|[-\s])E\s?\d/i.test(String(room || ''))

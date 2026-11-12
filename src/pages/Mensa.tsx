@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useActive } from '../state'
 import { PageHeader, Widget } from '../components/ui'
 import { addDays, cachedTimetable, isoOf, mondayOf, type TimetableEvent } from '../lib/stundenplan'
-import { DIET_LABEL, getMensa, mainDishes, onCampus, type MensaItem } from '../lib/mensa'
+import { DIET_LABEL, getMensa, getVegOnly, isVegetarian, mainDishes, onCampus, setVegOnly, type MensaItem } from '../lib/mensa'
 
 const DAYSFULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -48,7 +48,11 @@ export function SpeiseplanKachel({ profileId }: { profileId: string }) {
   useEffect(() => {
     let cancelled = false
     getMensa(todayIso())
-      .then((it) => { if (!cancelled) setItems(mainDishes(it)) })
+      .then((it) => {
+        if (cancelled) return
+        const m = mainDishes(it)
+        setItems(getVegOnly() ? m.filter(isVegetarian) : m)
+      })
       .catch(() => { if (!cancelled) setItems([]) })
     return () => { cancelled = true }
   }, [profileId])
@@ -80,6 +84,7 @@ export function Mensa() {
   const [byDay, setByDay] = useState<Record<string, MensaItem[]>>({})
   const [status, setStatus] = useState('Lädt …')
   const [events, setEvents] = useState<TimetableEvent[] | null>(null)
+  const [vegOnly, setVeg] = useState(() => getVegOnly())
 
   // Stundenplan der Woche (Zwischenspeicher) für die Campus-Erkennung.
   useEffect(() => {
@@ -124,6 +129,11 @@ export function Mensa() {
         <span className="sp-weeklabel">{weekLabel}</span>
       </div>
 
+      <label className="row" style={{ gap: 8, alignItems: 'center', margin: '0 0 12px' }}>
+        <input type="checkbox" checked={vegOnly} onChange={(e) => { setVeg(e.target.checked); setVegOnly(e.target.checked) }} />
+        <span>Nur vegetarisch <span className="muted">(ohne Fleisch &amp; Fisch)</span></span>
+      </label>
+
       {status ? (
         <div className="sp-status">{status}</div>
       ) : (
@@ -131,6 +141,8 @@ export function Mensa() {
           {dayIsos.map((iso, i) => {
             const d = addDays(monday, i)
             const off = campusKnown && !onCampus((events ?? []).filter((e) => e.start.slice(0, 10) === iso))
+            const base = mainDishes(byDay[iso] ?? [])
+            const shown = vegOnly ? base.filter(isVegetarian) : base
             return (
               <div key={iso} className={`card stack mensa-col${off ? ' mensa-off' : ''}`} style={{ gap: 8 }}>
                 <div className="mensa-dayhead">
@@ -138,7 +150,11 @@ export function Mensa() {
                   {iso === today && <span className="chip accent">heute</span>}
                   {off && <span className="chip">nicht am Campus</span>}
                 </div>
-                <DayMenu items={mainDishes(byDay[iso] ?? [])} />
+                {vegOnly && shown.length === 0 && base.length > 0 ? (
+                  <p className="muted" style={{ margin: 0, fontSize: 13 }}>Nichts Vegetarisches an diesem Tag.</p>
+                ) : (
+                  <DayMenu items={shown} />
+                )}
               </div>
             )
           })}

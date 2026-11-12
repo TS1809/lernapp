@@ -41,6 +41,7 @@ Eigene Weiterentwicklungen in einem Fork sind willkommen – wie das geht und we
 
 ## Versionen
 
+- **1.44.0** – Speiseplan: Schalter **„Nur vegetarisch"**. Eingeschaltet werden alle Gerichte mit Fleisch **und Fisch** ausgeblendet – angezeigt werden nur ausdrücklich als vegan/vegetarisch gekennzeichnete Gerichte (so rutscht garantiert nichts durch). Die Einstellung wird gemerkt und gilt auch für die Dashboard-Kachel.
 - **1.43.3** – Zwei Kleinigkeiten: Im Speiseplan werden jetzt auch **Vorspeisen** ausgeblendet (wie Beilagen/Desserts). Und die **Datum-/Uhrzeit-Auswahl bei Terminen** ist angenehmer – statt des kombinierten Feldes gibt es ein eigenes Datumsfeld plus zwei Dropdowns für Stunde und Minute (15-Minuten-Schritte).
 - **1.43.2** – Speiseplan-Woche: Alle Tage werden jetzt **gleichzeitig nebeneinander** als Raster angezeigt; passt nicht alles in eine Reihe (schmales Gerät), brechen die Tage **untereinander** um (nach unten scrollen) – kein seitliches Scrollen mehr. Die Seite nutzt dafür die breite Darstellung.
 - **1.43.1** – Speiseplan: Wochenansicht jetzt **waagerecht** (Tage nebeneinander, horizontal scrollbar); **Beilagen und Desserts** werden generell nicht mehr angezeigt (auch nicht in der Kachel).

@@ -60,5 +60,10 @@ test('Mensa Horb: Speiseplan + Campus-Ausgrauen', async ({ page, context }) => {
   await expect(page.locator('.mensa-off').first()).toBeVisible()
   await expect(page.getByText('nicht am Campus').first()).toBeVisible()
 
+  // Vegetarisch-Filter blendet Fleisch/Fisch (hier Geflügel) aus, Veganes bleibt.
+  await page.getByRole('checkbox', { name: /vegetarisch/i }).check()
+  await expect(page.getByText('Hähnchenbrustfilet Piccata Milanese')).toHaveCount(0)
+  await expect(page.getByText('Kichererbsen-Curry mit Duftreis').first()).toBeVisible()
+
   expect(errors).toEqual([])
 })
