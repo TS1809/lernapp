@@ -49,9 +49,9 @@ export async function getMensa(date: string): Promise<MensaItem[]> {
   }
 }
 
-/** Nur die „richtigen" Gerichte – Beilagen und Desserts werden generell ausgeblendet. */
+/** Nur die „richtigen" Hauptgerichte – Vorspeisen, Beilagen und Desserts werden ausgeblendet. */
 export function mainDishes(items: MensaItem[]): MensaItem[] {
-  return items.filter((it) => !/beilage|dessert/i.test(it.category))
+  return items.filter((it) => !/vorspeise|beilage|dessert/i.test(it.category))
 }
 
 /** Raum im „E"-Gebäude (anderes Gebäude): ein E direkt vor einer Zahl. */

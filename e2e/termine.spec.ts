@@ -54,7 +54,9 @@ test('Termine: anlegen und abstimmen', async ({ page, context }) => {
   // Termine-Seite: Termin anlegen
   await page.goto('./#/termine')
   await page.getByPlaceholder(/Lerngruppe Konstruktionslehre/).fill('Lerngruppe Mathe')
-  await page.locator('input[type=datetime-local]').fill('2027-01-15T14:00')
+  await page.locator('input[type=date]').fill('2027-01-15')
+  await page.getByLabel('Stunde').selectOption('14')
+  await page.getByLabel('Minute').selectOption('30')
   await page.getByRole('button', { name: 'Termin anlegen' }).click()
   await expect(page.getByText('Lerngruppe Mathe')).toBeVisible()
 

@@ -3,6 +3,7 @@ import { collectErrors, onboard } from './helpers'
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,OPTIONS' }
 const MENU = [
+  { category: 'VORSPEISE', name: 'Linsensuppe', prices: ['0,99', '1,39', '1,79'], icons: ['VG'] },
   { category: 'VEGANER RENNER', name: 'Kichererbsen-Curry mit Duftreis', prices: ['2,99', '5,99', '6,49'], icons: ['VG', 'VR'] },
   { category: 'HAUPTGERICHT', name: 'Hähnchenbrustfilet Piccata Milanese', prices: ['5,10', '8,10', '8,60'], icons: ['G'] },
   { category: 'BEILAGE', name: 'Beilagensalat', prices: ['0,99', '1,39', '1,79'], icons: ['VG'] },
@@ -51,7 +52,8 @@ test('Mensa Horb: Speiseplan + Campus-Ausgrauen', async ({ page, context }) => {
   await expect(page.getByText('€ 5,10').first()).toBeVisible()
   await expect(page.getByText('/ 8,10 /')).toHaveCount(0)
   await expect(page.getByText('vegan').first()).toBeVisible()
-  // Beilagen und Desserts werden generell nicht angezeigt.
+  // Vorspeisen, Beilagen und Desserts werden generell nicht angezeigt.
+  await expect(page.getByText('Linsensuppe')).toHaveCount(0)
   await expect(page.getByText('Beilagensalat')).toHaveCount(0)
   await expect(page.getByText('Schokopudding')).toHaveCount(0)
   // Freie Tage sind ausgegraut und markiert, bleiben aber sichtbar.

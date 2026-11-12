@@ -12,6 +12,14 @@ function whenLabel(ts: number): string {
   )
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const todayIso = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+const HOURS = Array.from({ length: 24 }, (_, i) => pad2(i))
+const MINUTES = ['00', '15', '30', '45']
+
 /** Dashboard-Kachel: Termine mit Zahl der noch offenen Zu-/Absagen. */
 export function TermineKachel({ profileId }: { profileId: string }) {
   const [pending, setPending] = useState(0)
@@ -49,7 +57,9 @@ export function CourseEvents() {
 
   // Formular
   const [title, setTitle] = useState('')
-  const [at, setAt] = useState('')
+  const [date, setDate] = useState(() => todayIso())
+  const [hour, setHour] = useState('18')
+  const [minute, setMinute] = useState('00')
   const [location, setLocation] = useState('')
   const [desc, setDesc] = useState('')
 
@@ -100,14 +110,20 @@ export function CourseEvents() {
 
   async function add() {
     const t = title.trim()
-    const ts = at ? new Date(at).getTime() : NaN
     if (!t) return
+    if (!date) {
+      setError('Bitte ein Datum wählen.')
+      return
+    }
+    const ts = new Date(`${date}T${hour}:${minute}`).getTime()
     if (!Number.isFinite(ts)) {
-      setError('Bitte Datum und Uhrzeit angeben.')
+      setError('Ungültiges Datum.')
       return
     }
     setTitle('')
-    setAt('')
+    setDate(todayIso())
+    setHour('18')
+    setMinute('00')
     setLocation('')
     setDesc('')
     try {
@@ -181,9 +197,21 @@ export function CourseEvents() {
           <input type="text" placeholder="z. B. Lerngruppe Konstruktionslehre" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="field" style={{ marginBottom: 0 }}>
-          <span>Wann</span>
-          <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />
+          <span>Datum</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <span>Uhrzeit</span>
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <select className="grow" aria-label="Stunde" value={hour} onChange={(e) => setHour(e.target.value)}>
+              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+            <span>:</span>
+            <select className="grow" aria-label="Minute" value={minute} onChange={(e) => setMinute(e.target.value)}>
+              {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
         <label className="field" style={{ marginBottom: 0 }}>
           <span>Ort (optional)</span>
           <input type="text" placeholder="z. B. Bibliothek / Online" value={location} onChange={(e) => setLocation(e.target.value)} />
@@ -193,7 +221,7 @@ export function CourseEvents() {
           <textarea rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} />
         </label>
         <div className="row">
-          <button className="btn primary grow" disabled={!title.trim() || !at} onClick={add}>Termin anlegen</button>
+          <button className="btn primary grow" disabled={!title.trim() || !date} onClick={add}>Termin anlegen</button>
         </div>
       </div>
 
