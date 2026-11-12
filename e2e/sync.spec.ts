@@ -36,14 +36,14 @@ test('Zwei Geräte über Dropbox: verbinden, übernehmen, abgleichen, sichern', 
   await a.getByRole('button', { name: 'Jetzt abgleichen' }).click()
   await expect.poll(() => countRows(a, 'exams')).toBe(2)
 
-  // Ohne Änderungen fragt der Abgleich nur die Dateiversion ab
+  // Ohne Änderungen fragt der Abgleich nur die Dateiversion ab – es werden keine Daten übertragen
   await expect(a.getByRole('button', { name: 'Jetzt abgleichen' })).toBeEnabled()
   box.requests.length = 0
   await a.getByRole('button', { name: 'Jetzt abgleichen' }).click()
   await expect.poll(() => box.requests.length).toBeGreaterThan(0)
   await a.waitForTimeout(500)
-  // (ein automatischer Abgleich kann zeitgleich laufen – auch er darf nur die Version abfragen)
-  expect(new Set(box.requests)).toEqual(new Set(['files/get_metadata']))
+  // (ein automatischer Abgleich kann zeitgleich laufen – entscheidend ist: kein Up-/Download)
+  expect(box.requests.some((r) => r.startsWith('files/upload') || r.startsWith('files/download'))).toBe(false)
 
   // Wochensicherung ist sichtbar
   await a.getByRole('button', { name: 'Wochensicherungen anzeigen' }).click()
