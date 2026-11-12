@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { collectErrors, createExam, isoIn, onboard } from './helpers'
 
-test('Erinnerungen: frei anlegen, zu einer Hausaufgabe setzen, auf der Startseite abhaken, per Datei übernehmen', async ({ page }) => {
+test('Erinnerungen: frei anlegen, zu einer Hausaufgabe setzen, auf der Startseite abhaken', async ({ page }) => {
   const errors = collectErrors(page)
   await onboard(page)
   await createExam(page, 'Maschinendynamik')
@@ -44,7 +44,6 @@ test('Erinnerungen: frei anlegen, zu einer Hausaufgabe setzen, auf der Startseit
   await page.getByRole('link', { name: /Übungsblatt 3/ }).click()
   await page.getByRole('button', { name: 'Abhaken' }).click()
   await page.getByRole('button', { name: 'Erledigt' }).click()
-  await page.getByRole('button', { name: 'Nein' }).click()
   await page.goto('./#/erinnerungen')
   await expect(page.locator('.section-title', { hasText: 'Später' })).toHaveCount(0)
   await expect(page.locator('.reminder-row', { hasText: 'Übungsblatt 3' })).toContainText('Hausaufgabe erledigt')
@@ -55,14 +54,5 @@ test('Erinnerungen: frei anlegen, zu einer Hausaufgabe setzen, auf der Startseit
   await expect(page.locator('.section-title', { hasText: 'Fällig' })).toBeVisible()
   await page.getByRole('button', { name: 'Erledigt: Altklausur beim Dozenten anfragen' }).click()
 
-  // Erinnerung per Datei (z. B. von Claude)
-  const file = { format: 'lernapp-erinnerungen', formatVersion: 1, reminders: [{ id: 'pilot-feedback', title: 'Feedback zum Pilot geben', note: 'Tipps zu leicht oder zu schwer?', date: isoIn(0), exam: 'maschinendynamik' }] }
-  await page.goto('./#/import')
-  await page.locator('input[type=file]').first().setInputFiles({ name: 'erinnerung.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(file)) })
-  await expect(page.getByText('Tipps zu leicht oder zu schwer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Übernehmen' }).click()
-  await expect(page.locator('.notice', { hasText: '1 Erinnerung angelegt.' })).toBeVisible()
-  await page.goto('./')
-  await expect(page.getByRole('region', { name: /Erinnerungen: 1 fällig/ })).toContainText('Feedback zum Pilot geben')
   expect(errors).toEqual([])
 })

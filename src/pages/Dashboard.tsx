@@ -1,33 +1,21 @@
 import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useActive } from '../state'
-import { loadStudyData, updateSnapshots } from '../lib/study'
-import { addDays, daysUntil, formatCountdown, formatDate, isoDate, studyDate, studyDayStart } from '../lib/dates'
-import { cardMode, type Mode } from '../lib/db'
-import { materialByExam, streak } from '../lib/stats'
-import { DayBars, Icon, PageHeader, Widget } from '../components/ui'
+import { daysUntil, formatCountdown, formatDate, studyDate } from '../lib/dates'
+import { Icon, PageHeader, Widget } from '../components/ui'
 import { Link } from 'react-router-dom'
-import { subjectsToday } from '../lib/planner'
-import { homeworkDueByExam, isDueSoon } from '../lib/homework'
-import { duePending } from '../lib/pending'
 import { shortDue } from './Homework'
+import { sortOpen } from '../lib/homework'
 import { ReminderRow, usePurgeDoneReminders, useReminders } from './Reminders'
 import { isDueReminder, isOpenReminder } from '../lib/reminders'
 import { useSync } from '../sync-state'
 import { BACKUP_REMINDER_DAYS, lastBackup } from '../lib/backup'
 import { db } from '../lib/db'
-import { FSRS_HINT_REVIEWS } from './FsrsSettings'
-import { dayShare, dayWork, weekShares } from '../lib/dayProgress'
 import { DashboardStundenplan, NotenKachel } from './Stundenplan'
 import { KurschatKachel } from './CourseChat'
 import { TermineKachel } from './CourseEvents'
 import { SpeiseplanKachel } from './Mensa'
 import { syncCourse } from '../lib/course'
-
-export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string; extra: number }> = {
-  mobile: { title: 'Unterwegs', unit: 'Karten', one: 'Karte', extra: 10 },
-  desk: { title: 'Schreibtisch', unit: 'Aufgaben', one: 'Aufgabe', extra: 1 },
-}
 
 /** So viele Klausuren passen in die „Nächste Klausuren“-Kachel. */
 const MAX_EXAM_ROWS = 5
@@ -36,46 +24,32 @@ const MAX_EXAM_ROWS = 5
 export function Dashboard() {
   const { profile, semester } = useActive()
   const sync = useSync()
-  const data = useLiveQuery(() => loadStudyData(profile), [profile])
-  const reviewCount = useLiveQuery(() => db.reviews.where('profileId').equals(profile.id).count(), [profile.id])
-  // Gespeichertes Tagespensum der letzten Woche für die Lernserie
-  const weekStart = isoDate(addDays(studyDayStart(Date.now()), -6))
-  const snapshots = useLiveQuery(() => db.snapshots.where('profileId').equals(profile.id).filter((s) => s.date >= weekStart).toArray(), [profile.id, weekStart])
+  const exams = useLiveQuery(
+    () => (profile.activeSemesterId ? db.exams.where('semesterId').equals(profile.activeSemesterId).toArray() : []),
+    [profile.activeSemesterId],
+  )
+  const homeworkAll = useLiveQuery(() => db.homework.where('profileId').equals(profile.id).toArray(), [profile.id])
   const backupAt = useLiveQuery(async () => (await lastBackup(profile.id)) ?? 0, [profile.id])
   const rem = useReminders()
   usePurgeDoneReminders()
-
-  useEffect(() => {
-    // Ein Wert pro Tag; nach dem Lernen aktualisiert, damit das Pensum des Tages für die Lernserie stimmt.
-    if (data) updateSnapshots(profile, data.exams, data.cards, Date.now(), data.plan).catch(() => {})
-  }, [data])
 
   // Kurs automatisch beitreten (aus dem DUALIS-Login erkannt) und Kurs-Hausaufgaben holen.
   useEffect(() => {
     syncCourse(profile.id, semester.id, profile.name).catch(() => {})
   }, [profile.id, semester.id])
 
-  if (!data) return null
-  const { exams, cards, plan, logs, homework } = data
+  if (!exams || !homeworkAll) return null
   const now = Date.now()
-  const upcoming = exams.filter((e) => plan.exams.some((p) => p.examId === e.id))
-  const next = upcoming[0]
-  const nextPlan = next && plan.exams.find((p) => p.examId === next.id)
-  const days = streak(logs, now)
-  // Ohne Dropbox: Erinnerung an eine Sicherungsdatei, sobald seit der letzten (bzw. dem ersten Lernen) eine Woche vergangen ist.
-  const since = backupAt || Math.min(...logs.map((l) => l.reviewedAt))
+  const homework = sortOpen(homeworkAll)
+  // Ohne Dropbox: Erinnerung an eine Sicherungsdatei, sobald seit der letzten (bzw. dem Start) eine Woche vergangen ist.
+  const since = backupAt || profile.createdAt
+  const hasData = exams.length > 0 || homeworkAll.length > 0
   const backupDue =
-    !sync.connected && backupAt !== undefined && logs.length && now - since >= BACKUP_REMINDER_DAYS * 864e5
+    !sync.connected && backupAt !== undefined && hasData && now - since >= BACKUP_REMINDER_DAYS * 864e5
       ? backupAt
         ? Math.floor((now - backupAt) / 864e5)
         : 0
       : null
-  const modes = (['mobile', 'desk'] as Mode[]).filter((m) => cards.some((c) => cardMode(c) === m) || (m === 'desk' && data.homework.length > 0))
-  // Nach Fach getrennt lernen: Bei mehreren Fächern führt das Widget zur Auswahl, empfohlen ist das mit dem größten Rückstand
-  const hwDue = homework.filter((h) => isDueSoon(h, now))
-  const subjects = subjectsToday(plan, homeworkDueByExam(homework, now))
-  const examById = new Map(exams.map((e) => [e.id, e]))
-  const missingDocs = upcoming.flatMap((e) => duePending(e, now).map((doc) => ({ exam: e, doc })))
   const openReminders = rem ? rem.reminders.filter((r) => isOpenReminder(r, rem.homework)) : []
   const dueReminders = rem ? openReminders.filter((r) => isDueReminder(r, rem.homework, now)) : []
   // Heute abgehakte bleiben bis zum Abend ausgegraut im Widget – zum Rückgängigmachen.
@@ -95,20 +69,6 @@ export function Dashboard() {
     }
     return phase
   })()
-
-  // Gelernte Karten der letzten 7 Tage
-  const today = studyDayStart(now)
-  const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
-  const counts = week.map((d) => logs.filter((l) => studyDate(l.reviewedAt) === isoDate(d)).length)
-  // Balken: geschaffter Anteil des Tagespensums (voll = alle Karten unterwegs erledigt)
-  const work = [...dayWork(plan).values()]
-  const todayShare = dayShare(
-    work.reduce((s, w) => s + w.done, 0),
-    work.reduce((s, w) => s + w.left, 0),
-    counts[6],
-  )
-  const shares = weekShares(week.map((d) => isoDate(d)), snapshots ?? [], counts, { date: isoDate(today), share: todayShare })
-  const dayLabels = week.map((d) => new Date(d).toLocaleDateString('de-DE', { weekday: 'narrow' }))
 
   return (
     <>
@@ -132,102 +92,24 @@ export function Dashboard() {
 
       <div className="widgets-wrap">
       <div className="widgets">
-        {(reviewCount ?? 0) >= FSRS_HINT_REVIEWS && !profile.fsrsWeights && !profile.fsrsHintDismissed && (
-          <Widget size="medium" to="/lernalgorithmus" title="Lernalgorithmus anpassen" icon="chart" tint="var(--ok)">
-            <div className="w-headline">{reviewCount?.toLocaleString('de-DE')} Bewertungen geschafft</div>
-            <p className="w-caption">Jetzt lässt sich der Wiederholungsplan an dein Gedächtnis anpassen – dauert 2 Minuten. Tippen für die Anleitung.</p>
-          </Widget>
-        )}
-
         {backupDue !== null && (
           <Widget size="medium" to="/einstellungen" title="Sicherung" icon="download" tint="var(--warn)">
             <div className="w-headline">{backupDue ? `Letzte Sicherung vor ${backupDue} Tagen` : 'Noch keine Sicherung'}</div>
-            <p className="w-caption">Ohne Dropbox liegen deine Lerndaten nur auf diesem Gerät. Tippen und unter „Daten & Sicherung“ eine Sicherungsdatei anlegen, z. B. in iCloud Drive.</p>
+            <p className="w-caption">Ohne Dropbox liegen deine Daten nur auf diesem Gerät. Tippen und unter „Daten & Sicherung“ eine Sicherungsdatei anlegen, z. B. in iCloud Drive.</p>
           </Widget>
         )}
 
         {!semester.kind && (
           <Widget size="medium" to={`/semester/${semester.id}`} title="Semester einrichten" icon="settings" tint="var(--warn)">
             <div className="w-headline">Wie sieht deine Prüfungsphase aus?</div>
-            <p className="w-caption">Dual mit allen Klausuren in einer Woche oder regulär über mehrere Wochen – danach richtet sich dein Lernplan.</p>
+            <p className="w-caption">Dual mit allen Klausuren in einer Woche oder regulär über mehrere Wochen.</p>
           </Widget>
-        )}
-        {exams.length === 0 ? (
-          <Widget size="medium" to="/pruefung/neu" title="Loslegen" icon="plus">
-            <div className="w-headline">Erste Prüfung anlegen</div>
-            <p className="w-caption">Mit Termin und Wichtigkeit – danach Karten importieren und die App plant dein Lernen.</p>
-          </Widget>
-        ) : profile.tileImport && cards.length === 0 && homework.length === 0 ? (
-          <Widget size="medium" to="/import" title="Loslegen" icon="download">
-            <div className="w-headline">Karten importieren</div>
-            <p className="w-caption">Lade ein Kartenpaket für eine deiner Prüfungen – oder probiere das Beispielpaket aus.</p>
-          </Widget>
-        ) : (
-          <>
-          {modes.filter((m) => (m === 'mobile' ? profile.tileMobile : profile.tileDesk)).map((m) => {
-            const t = plan.modes[m]
-            const hwCount = m === 'desk' ? hwDue.length : 0
-            const left = t.reviewsLeft + t.newLeft + hwCount
-            const info = MODE_INFO[m]
-            const budget = data.budgets[m].effective
-            const forMode = subjects.filter((s) => s.left[m] > 0)
-            // Auswahl, sobald mehrere Fächer Stoff für diesen Modus haben – auch wenn heute nur eines eingeplant ist.
-            const choose = new Set([...materialByExam(data.cards, m).keys(), ...forMode.map((s) => s.examId)]).size > 1
-            return (
-              <Widget
-                key={m}
-                size="medium"
-                to={choose ? `/lernen/${m}/auswahl` : left > 0 ? `/lernen/${m}` : `/lernen/${m}?extra=${info.extra}`}
-                title={info.title}
-                icon={m === 'mobile' ? 'cards' : 'pencil'}
-                label={`${info.title} lernen`}
-              >
-                <div className="w-split">
-                  <div>
-                    {left > 0 ? (
-                      <>
-                        <div className="w-number">{left}</div>
-                        <div className="w-caption">{forMode.length > 1 ? `${info.unit} in ${forMode.length} Fächern` : `${info.unit} heute`}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-number done">✓</div>
-                        <div className="w-caption">Für heute erledigt</div>
-                      </>
-                    )}
-                  </div>
-                  <div className="w-side">
-                    {left > 0 ? (
-                      <>
-                        {hwCount > 0 && <span>{hwCount} {hwCount === 1 ? 'Hausaufgabe' : 'Hausaufgaben'}</span>}
-                        <span>{t.reviewsLeft} Wdh. · {t.newLeft} {m === 'desk' ? 'empfohlen' : 'neu'}</span>
-                        {choose && forMode.length > 0 && <span className="truncate">Empfohlen: {examById.get(forMode[0].examId)?.name}</span>}
-                        <span className="w-pill">ca. {t.minutesLeft} min · {choose ? 'Fach wählen' : 'Start'}</span>
-                      </>
-                    ) : (
-                      <span className="w-pill">{m === 'mobile' ? '10 extra' : '1 extra'}</span>
-                    )}
-                    {(t.minutesNeeded > budget || (m === 'desk' && data.homeworkMinutes > profile.minutesDesk)) && <span className="w-warn">Budget zu knapp</span>}
-                  </div>
-                </div>
-              </Widget>
-            )
-          })}
-          </>
         )}
 
-        {missingDocs.length > 0 && (
-          <Widget size="medium" to={`/pruefung/${missingDocs[0].exam.id}`} title="Unterlagen fehlen" icon="download" tint="var(--warn)" label="Fehlende Unterlagen">
-            <div className="w-list" style={{ gap: 6 }}>
-              {missingDocs.slice(0, 3).map(({ exam: e, doc }) => (
-                <div key={`${e.id}:${doc.id}`} className="row" style={{ gap: 8, minWidth: 0 }}>
-                  <span className="dot" style={{ background: e.color }} />
-                  <span className="truncate"><b>{e.name}:</b> {doc.title}</span>
-                </div>
-              ))}
-              {missingDocs.length > 3 && <small>+ {missingDocs.length - 3} weitere</small>}
-            </div>
-            <p className="w-caption" style={{ marginTop: 'auto' }}>Tippen zum Abhaken oder Zurückstellen.</p>
+        {exams.length === 0 && (
+          <Widget size="medium" to="/pruefung/neu" title="Loslegen" icon="plus">
+            <div className="w-headline">Erste Prüfung anlegen</div>
+            <p className="w-caption">Mit Termin und Fach – sie taucht dann in „Nächste Klausuren“ und im Stundenplan auf.</p>
           </Widget>
         )}
 
@@ -280,21 +162,6 @@ export function Dashboard() {
           </Widget>
         )}
 
-        {profile.tileNextExam && next && nextPlan && (
-          <Widget size="small" to={`/pruefung/${next.id}`} title="Nächste Klausur" icon="clock" tint={next.color}>
-            <div className="w-number">{nextPlan.daysLeft}</div>
-            <div className="w-caption">{nextPlan.daysLeft === 1 ? 'Tag' : 'Tage'}</div>
-            <div className="w-foot truncate">{next.name}</div>
-          </Widget>
-        )}
-
-        {next && nextPlan && nextPlan.daysLeft <= 21 && cards.some((c) => c.examId === next.id) && (
-          <Widget size="small" to={`/probeklausur/${next.id}`} title="Probeklausur" icon="pencil" tint={next.color}>
-            <div className="w-headline">Unter Zeitdruck üben</div>
-            <div className="w-foot truncate">{next.name}</div>
-          </Widget>
-        )}
-
         {nextExams.length > 0 && (
           <Widget size={nextExams.length > 1 ? 'large' : 'medium'} to="/pruefungen" title="Nächste Klausuren" icon="clock" label="Nächste Klausuren">
             <div className="w-list">
@@ -318,14 +185,6 @@ export function Dashboard() {
           </Widget>
         )}
 
-        {profile.tileStreak && (
-          <Widget size="small" to="/pruefungen" title="Lernserie" icon="flame" tint="var(--hard)">
-            <div className="w-number">{days}</div>
-            <div className="w-caption">{days === 1 ? 'Tag' : 'Tage'} in Folge</div>
-            <DayBars values={shares} labels={dayLabels} max={1} />
-          </Widget>
-        )}
-
         {profile.stundenplan && <NotenKachel profileId={profile.id} />}
 
         {profile.stundenplan && <KurschatKachel profileId={profile.id} />}
@@ -333,15 +192,6 @@ export function Dashboard() {
         {profile.stundenplan && <TermineKachel profileId={profile.id} />}
 
         {profile.stundenplan && <SpeiseplanKachel profileId={profile.id} />}
-
-        {profile.tileImport && (
-          <Widget size="small" to="/import" title="Importieren" icon="download">
-            <div className="w-headline">Karten&shy;paket hinzufügen</div>
-            <div className="w-foot">Neu oder Update</div>
-          </Widget>
-        )}
-
-
       </div>
       </div>
 

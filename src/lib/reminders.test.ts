@@ -4,7 +4,7 @@ import { db, type Exam, type Homework, type Reminder } from './db'
 import { applyDoc, exportDoc, mergeDocs, parseSyncDoc, type SyncDoc } from './sync'
 import { addDays, isoDate } from './dates'
 import {
-  completeReminder, deleteReminder, homeworkReminderDate, importReminders, isDueReminder, isOpenReminder, isRecentlyDone, parseRemindersFile, postponeReminder, purgeDoneReminders, reopenReminder, REMINDERS_FORMAT, saveReminder,
+  completeReminder, deleteReminder, homeworkReminderDate, isDueReminder, isOpenReminder, isRecentlyDone, postponeReminder, purgeDoneReminders, reopenReminder, saveReminder,
 } from './reminders'
 
 const P = 'p1'
@@ -70,22 +70,6 @@ describe('Erinnerungen', () => {
     // Löschung schlägt den älteren Stand eines anderen Geräts
     await deleteReminder((await db.reminders.get('r-local'))!)
     expect(mergeDocs(await exportDoc(P), local).reminders).toHaveLength(0)
-  })
-
-  it('kommen als Datei (z. B. von Claude) dazu – ohne Doppelte und ohne gelöschte wieder anzulegen', async () => {
-    const file = { format: REMINDERS_FORMAT, formatVersion: 1, reminders: [
-      { id: 'feedback', title: 'Feedback geben', note: 'Tipps zu leicht?', date: '2026-11-05', exam: 'maschinendynamik' },
-      { id: 'kaputt', title: '', date: '2026-11-05' },
-    ] }
-    const entries = parseRemindersFile(file)
-    expect(entries).toHaveLength(1)
-    expect(() => parseRemindersFile({ format: 'x' })).toThrow('keine Erinnerungen')
-    expect(await importReminders(P, entries, [exam])).toBe(1)
-    const r = (await db.reminders.get(`${P}:feedback`))!
-    expect(r).toMatchObject({ title: 'Feedback geben', note: 'Tipps zu leicht?', date: '2026-11-05', examId: 'e1' })
-    expect(await importReminders(P, entries, [exam])).toBe(0)
-    await deleteReminder(r)
-    expect(await importReminders(P, entries, [exam])).toBe(0)
   })
 
   it('bleiben erledigt eine Woche sichtbar, lassen sich rückgängig machen und werden danach gelöscht', async () => {

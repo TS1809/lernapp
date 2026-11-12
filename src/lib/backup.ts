@@ -1,6 +1,7 @@
 import { db, uid, type ReviewLog } from './db'
-import { BACKUP_FORMAT } from './packages'
 import { exportDoc, parseSyncDoc, replaceProfile, type SyncDoc } from './sync'
+
+const BACKUP_FORMAT = 'lernapp-backup'
 
 /** Sicherungsdatei: derselbe Inhalt wie ein Synchronisationsstand, nur mit eigenem Formatnamen. */
 export type Backup = Omit<SyncDoc, 'format' | 'formatVersion'> & { format: typeof BACKUP_FORMAT; formatVersion: 2; exportedAt: string }

@@ -10,8 +10,8 @@ const startedAt = Date.now()
 const listeners = new Set<() => void>()
 let available = false
 
-/** Seiten, die ein Neuladen unterbrechen würde. */
-export const isBusyRoute = (hash = location.hash) => /^#\/(lernen|probeklausur)\//.test(hash)
+/** Seiten, die ein Neuladen unterbrechen würde. (Derzeit keine – reine Orga-App.) */
+export const isBusyRoute = () => false
 
 const updateSW = registerSW({
   immediate: true,

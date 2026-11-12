@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Profile, type Semester } from './lib/db'
-import { setFsrsWeights } from './lib/scheduler'
 
 export const PROFILE_KEY = 'lernapp.profileId'
 const KEY = PROFILE_KEY
@@ -46,9 +45,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (profile && profile.id !== selected) setSelected(profile.id)
   }, [profile, selected])
-
-  // Persönliche FSRS-Parameter gelten für alle Berechnungen des aktiven Profils.
-  setFsrsWeights(profile?.fsrsWeights)
 
   const value: AppState = {
     loading: profiles === undefined || semesters === undefined,

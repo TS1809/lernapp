@@ -1,12 +1,8 @@
-import { db, tombstone, uid, type Exam, type Homework } from './db'
+import { db, tombstone, uid, type Homework } from './db'
 import { daysUntil } from './dates'
-import { importPackage } from './packages'
-import { PACKAGE_FORMAT, type CardPackage } from './package-format'
 
-/** Ab so vielen Tagen vor der Abgabe erscheint eine Hausaufgabe von selbst in der Schreibtisch-Sitzung. */
+/** Ab so vielen Tagen vor der Abgabe gilt eine Hausaufgabe als fällig. */
 export const HOMEWORK_DUE_SOON_DAYS = 3
-/** Paket, in dem übernommene Hausaufgaben als Übungsaufgaben landen. */
-export const HOMEWORK_PACKAGE_ID = 'hausaufgaben'
 
 export const isOpen = (h: Homework) => !h.doneAt
 
@@ -50,42 +46,6 @@ export async function deleteHomework(h: Homework) {
     await db.homework.delete(h.id)
     await db.tombstones.put(tombstone('homework', h.id, h.profileId))
   })
-}
-
-/** Text der Übungsaufgabe aus einer Hausaufgabe. */
-function taskCard(h: Homework) {
-  const back = [h.solution, h.solutionImage && `![Deine Lösung](${h.solutionImage})`].filter(Boolean).join('\n\n')
-  return {
-    uid: h.id,
-    type: 'task' as const,
-    mode: 'desk' as const,
-    chapter: 'k1',
-    front: `**${h.title}**${h.description.trim() ? `\n\n${h.description.trim()}` : ''}`,
-    image: h.image,
-    steps: [],
-    result: back || 'Vergleiche mit deiner damaligen Lösung bzw. der Besprechung in der Vorlesung.',
-    back: '',
-    tags: ['Hausaufgabe'],
-  }
-}
-
-/**
- * Übernimmt eine erledigte Hausaufgabe als Übungsaufgabe in die Wiederholung. Alle übernommenen
- * Hausaufgaben einer Prüfung bilden ein eigenes Paket – so bleiben sie bei späteren Übernahmen erhalten.
- */
-export async function keepAsTask(h: Homework, exam: Exam, now = Date.now()) {
-  await db.homework.update(h.id, { keptAt: now })
-  const kept = (await db.homework.where('examId').equals(exam.id).toArray()).filter((x) => x.keptAt).sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
-  const pkg: CardPackage = {
-    format: PACKAGE_FORMAT,
-    formatVersion: 1,
-    id: HOMEWORK_PACKAGE_ID,
-    title: 'Hausaufgaben',
-    version: 1,
-    chapters: [{ id: 'k1', title: 'Hausaufgaben' }],
-    cards: kept.map(taskCard),
-  }
-  await importPackage(exam, pkg, now)
 }
 
 /** Verkleinert ein Foto auf max. 1400 px und speichert es als JPEG-Daten-URL. */

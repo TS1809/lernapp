@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { budgetInfo, BUDGET_MIN_DAYS, BUDGET_WINDOW_DAYS, type BudgetInfo } from '../lib/budget'
-import { DAY } from '../lib/dates'
 import { Link } from 'react-router-dom'
 import { useAppState, useActive } from '../state'
 import { db, deleteProfile, deleteSemester, uid, type Profile } from '../lib/db'
 import { createBackup, parseBackup, restoreBackup, markBackup } from '../lib/backup'
-import { createTemplate, templateSummary } from '../lib/template'
-import { readJsonFile, safeFileName, saveFile } from '../lib/packages'
+import { readJsonFile, safeFileName, saveFile } from '../lib/files'
 import { isoDate } from '../lib/dates'
 import { PageHeader } from '../components/ui'
 import { clearConfig, configReady, getConfig, setConfig, type StundenplanConfig } from '../lib/stundenplan'
@@ -15,13 +12,12 @@ import { allowRename, demoteAdmin, ensureCourseConfig, kickMember, promoteAdmin,
 import { useSync } from '../sync-state'
 import { SEMESTER_KINDS } from '../lib/semesters'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { listBackups, restoreBackup as restoreDropboxBackup, widgetKey, type BackupEntry } from '../lib/syncService'
+import { listBackups, restoreBackup as restoreDropboxBackup, type BackupEntry } from '../lib/syncService'
 
 export function Settings() {
   const { profile, semester, semesters } = useActive()
   const { profiles, selectProfile } = useAppState()
   const sync = useSync()
-  const pdfs = useLiveQuery(() => db.pdfs.toCollection().primaryKeys(), [])
   const [backups, setBackups] = useState<BackupEntry[] | null>(null)
 
   async function showBackups() {
@@ -53,7 +49,7 @@ export function Settings() {
   const update = (patch: Partial<Profile>) => db.profiles.update(profile.id, patch)
 
   async function removeSemester(id: string, name: string) {
-    if (!confirm(`Semester „${name}“ mit allen Prüfungen, Karten und dem Lernfortschritt löschen?`)) return
+    if (!confirm(`Semester „${name}“ mit allen Prüfungen und Hausaufgaben löschen?`)) return
     await deleteSemester(id)
     if (id === profile.activeSemesterId) {
       const rest = semesters.filter((s) => s.id !== id)
@@ -84,13 +80,6 @@ export function Settings() {
     setMessage('Sicherung erstellt.')
   }
 
-  async function exportTemplate() {
-    const t = await createTemplate(profile.id)
-    if (!(await saveFile(`lernapp-vorlage-${safeFileName(profile.name)}-${isoDate(Date.now())}.json`, JSON.stringify(t)))) return
-    const { exams, cards, reports } = templateSummary(t)
-    setMessage(`Vorlage exportiert: ${exams} ${exams === 1 ? 'Prüfung' : 'Prüfungen'}, ${cards} Karten${reports ? `, ${reports} ${reports === 1 ? 'offene Meldung' : 'offene Meldungen'}` : ''}.`)
-  }
-
   async function importBackup(file?: File) {
     if (!file) return
     try {
@@ -108,72 +97,10 @@ export function Settings() {
     }
   }
 
-  const budgets = useLiveQuery(async () => {
-    const now = Date.now()
-    const logs = await db.reviews.where('reviewedAt').above(now - BUDGET_WINDOW_DAYS * DAY).filter((l) => l.profileId === profile.id).toArray()
-    const auto = profile.budgetAuto !== false
-    return { mobile: budgetInfo(profile.minutesMobile, logs, 'mobile', now, auto), desk: budgetInfo(profile.minutesDesk, logs, 'desk', now, auto) }
-  }, [profile.id, profile.minutesMobile, profile.minutesDesk, profile.budgetAuto])
-
   return (
     <>
       <PageHeader back title="Einstellungen" />
       {message && <div className="notice">{message}</div>}
-
-      <div className="section-title">Lernplan</div>
-      <div className="card">
-        <label className="field">
-          <span>Unterwegs (Karten): {profile.minutesMobile} min pro Tag</span>
-          <input type="range" min={5} max={120} step={5} value={profile.minutesMobile} onChange={(e) => update({ minutesMobile: Number(e.target.value) })} />
-          <BudgetNote info={budgets?.mobile} />
-        </label>
-        <label className="field">
-          <span>Am Schreibtisch (Rechenaufgaben): {profile.minutesDesk} min pro Tag</span>
-          <input type="range" min={0} max={240} step={15} value={profile.minutesDesk} onChange={(e) => update({ minutesDesk: Number(e.target.value) })} />
-          <BudgetNote info={budgets?.desk} desk />
-        </label>
-        <label className="row" style={{ gap: 10, marginBottom: 14 }}>
-          <input type="checkbox" checked={profile.budgetAuto !== false} onChange={(e) => update({ budgetAuto: e.target.checked })} />
-          <span style={{ fontSize: 15 }}>Budget an die gemessene Lernzeit anpassen</span>
-        </label>
-        <label className="row" style={{ gap: 10, marginBottom: 4, alignItems: 'flex-start' }}>
-          <input type="checkbox" checked={!!profile.socratic} onChange={(e) => update({ socratic: e.target.checked })} style={{ marginTop: 3 }} />
-          <span style={{ fontSize: 15 }}>Sokratisches Lernen (Test)</span>
-        </label>
-        <small style={{ display: 'block', marginBottom: 14 }}>
-          Bei Karten mit Leitfragen gibt es vor dem Aufdecken „Tipp“-Fragen, danach Kernpunkte zum Abhaken und einen Bewertungsvorschlag. Ausgeschaltet läuft das Lernen wie bisher.
-        </small>
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span>Zielsicherheit: {Math.round(profile.retention * 100)} %</span>
-          <input type="range" min={0.8} max={0.95} step={0.01} value={profile.retention} onChange={(e) => update({ retention: Number(e.target.value) })} />
-          <small>Wie sicher du eine Karte bei der nächsten Wiederholung noch wissen sollst. Höher = mehr Wiederholungen. 90 % ist ein guter Standard.</small>
-        </label>
-        <Link to="/lernalgorithmus" className="row between" style={{ marginTop: 14 }}>
-          <span>Lernalgorithmus (FSRS)</span>
-          <small>{profile.fsrsWeights ? 'persönlich angepasst' : 'Standard'} ›</small>
-        </Link>
-      </div>
-
-      <div className="section-title">Startseite-Kacheln</div>
-      <div className="card stack">
-        <small className="muted" style={{ marginTop: -2 }}>
-          Die Lern-Kacheln sind standardmäßig ausgeblendet. Hier kannst du sie einzeln wieder einblenden.
-        </small>
-        {(
-          [
-            ['tileMobile', 'Unterwegs (Karten lernen)'],
-            ['tileDesk', 'Schreibtisch (Rechenaufgaben)'],
-            ['tileNextExam', 'Nächste Klausur'],
-            ['tileStreak', 'Lernserie'],
-            ['tileImport', 'Kartenpaket importieren'],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="row" style={{ gap: 10, alignItems: 'center' }}>
-            <input type="checkbox" checked={!!profile[key]} onChange={(e) => update({ [key]: e.target.checked } as Partial<Profile>)} />
-            <span style={{ fontSize: 15 }}>{label}</span>
-          </label>
-        ))}
-      </div>
 
       <div className="section-title">Stundenplan & Noten (Test)</div>
       <StundenplanSection profile={profile} />
@@ -252,7 +179,6 @@ export function Settings() {
                 Trennen
               </button>
             </div>
-            <WidgetKey profileId={profile.id} />
             {backups === null ? (
               <button className="btn small ghost" style={{ color: 'var(--accent)', alignSelf: 'flex-start', marginLeft: -8 }} onClick={showBackups}>
                 Wochensicherungen anzeigen
@@ -298,25 +224,9 @@ export function Settings() {
         </label>
       </div>
 
-      <div className="section-title">Vorlage ohne Lernfortschritt</div>
-      <div className="card stack">
-        <p className="muted" style={{ margin: 0 }}>
-          Alle Semester, Prüfungen (mit Termin, Fachprofil und offenen Erinnerungen), Kartenpakete und offene Meldungen zu Karten in einer Datei – ohne Lernstand, Bewertungen, Hausaufgaben und persönliche Einstellungen. Zum Weitergeben an Kommilitonen oder für einen Neustart; importiert wird sie unter „Karten importieren“.
-        </p>
-        <button className="btn block" onClick={exportTemplate}>Vorlage exportieren</button>
-      </div>
-
-      <div className="section-title">Unterlagen</div>
-      <div className="card">
-        <Link to="/unterlagen" className="row between">
-          <span>Skripte für „Folie ansehen“</span>
-          <small>{pdfs?.length ?? 0} auf diesem Gerät ›</small>
-        </Link>
-      </div>
-
       <div className="section-title">Hilfe</div>
       <div className="card">
-        <Link to="/hilfe">Installation, Erinnerungen & Lernmethode</Link>
+        <Link to="/hilfe">Installation & Erinnerungen</Link>
       </div>
       <div className="card">
         <Link to="/ideen" className="row between">
@@ -330,45 +240,6 @@ export function Settings() {
         {__APP_BUILD__} · {new Date(__APP_BUILT_AT__).toLocaleDateString('de-DE')}
       </p>
     </>
-  )
-}
-
-/** Gemessene Lernzeit zum eingestellten Budget und das Budget, mit dem tatsächlich geplant wird. */
-function BudgetNote({ info, desk }: { info?: BudgetInfo; desk?: boolean }) {
-  if (!info || info.setting === 0) return null
-  const hw = desk ? ' Hausaufgaben bekommen immer ihre volle Zeit bis zur Abgabe; angepasst wird nur die Zeit für Aufgaben.' : ''
-  if (info.measured === undefined)
-    return <small>Noch zu wenig Daten: Ab {BUDGET_MIN_DAYS} Lerntagen wird deine tatsächliche Lernzeit gemessen.{hw}</small>
-  return (
-    <small>
-      Gemessen{desk ? ' (Aufgaben)' : ''}: ⌀ {Math.round(info.measured)} min an {info.days} Lerntagen (letzte {BUDGET_WINDOW_DAYS} Tage)
-      {!desk && info.effective !== info.setting ? ` · geplant wird mit ${info.effective} min` : ''}.{hw}
-    </small>
-  )
-}
-
-/** Schlüssel fürs Scriptable-Widget kopieren (siehe public/scriptable/lernapp-widget.js). */
-function WidgetKey({ profileId }: { profileId: string }) {
-  const [state, setState] = useState<'idle' | 'ok' | 'error'>('idle')
-  async function copy() {
-    try {
-      const key = await widgetKey(profileId)
-      if (!key) throw new Error()
-      await navigator.clipboard.writeText(key)
-      setState('ok')
-    } catch {
-      setState('error')
-    }
-  }
-  return (
-    <details className="explain">
-      <summary>Widget-Schlüssel (Scriptable)</summary>
-      <p className="muted" style={{ fontSize: 14 }}>
-        Damit das Homescreen-Widget immer aktuell ist, lädt es den Fortschritt direkt aus deiner Dropbox. Schlüssel kopieren, dann in Scriptable das Skript „Lernapp“ starten und „Widget-Schlüssel einfügen“ wählen. Der Schlüssel erlaubt nur Zugriff auf den Ordner der Lernapp und wird mit „Trennen“ ungültig.
-      </p>
-      <button className="btn block" onClick={copy}>{state === 'ok' ? 'Widget-Schlüssel kopiert' : 'Widget-Schlüssel kopieren'}</button>
-      {state === 'error' && <small className="badge-warn">Kopieren nicht möglich.</small>}
-    </details>
   )
 }
 

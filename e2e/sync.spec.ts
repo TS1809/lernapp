@@ -1,30 +1,20 @@
 import { expect, test } from '@playwright/test'
-import { collectErrors, connectDropbox, countRows, createExam, importPackage, newDropbox, onboard, rate, revealCard, useFakeDropbox } from './helpers'
+import { collectErrors, connectDropbox, countRows, createExam, newDropbox, onboard, useFakeDropbox } from './helpers'
 
 test('Zwei Geräte über Dropbox: verbinden, übernehmen, abgleichen, sichern', async ({ browser }) => {
   const box = newDropbox()
 
-  // Gerät A: Profil anlegen, lernen, verbinden
+  // Gerät A: Profil anlegen, Prüfung eintragen, verbinden
   const ctxA = await browser.newContext()
   await useFakeDropbox(ctxA, box)
   const a = await ctxA.newPage()
   const errorsA = collectErrors(a)
   await onboard(a)
   await createExam(a, 'Technische Mechanik')
-  await importPackage(a)
-  await a.goto('./#/lernen/mobile?extra=2')
-  for (let i = 0; i < 2; i++) {
-    await revealCard(a)
-    await rate(a, 'Einfach')
-  }
   await connectDropbox(a)
   const files = [...box.files.keys()]
   expect(files.some((f) => f.startsWith('/sync/'))).toBe(true)
-  expect(files).toContain('/erinnerung.txt')
   expect(files.some((f) => f.startsWith('/backups/'))).toBe(true)
-  expect(box.files.get('/erinnerung.txt')!.body.toString()).toMatch(/^Lernplan/)
-  const progress = JSON.parse(box.files.get('/fortschritt.json')!.body.toString())
-  expect(progress).toMatchObject({ format: 'lernapp-fortschritt', pruefungen: [{ name: 'Technische Mechanik' }] })
 
   // Gerät B: Profil aus Dropbox übernehmen
   const ctxB = await browser.newContext()
@@ -36,17 +26,15 @@ test('Zwei Geräte über Dropbox: verbinden, übernehmen, abgleichen, sichern', 
   await b.getByRole('button', { name: 'Übernehmen' }).click()
   await expect(b.locator('.widget').first()).toBeVisible()
   await expect(b.locator('.page-header')).toContainText('synchronisiert')
-  expect(await countRows(b, 'reviews')).toBe(2)
+  expect(await countRows(b, 'exams')).toBe(1)
 
-  // B lernt weiter, A übernimmt den Stand
-  await b.goto('./#/lernen/mobile?extra=1')
-  await revealCard(b)
-  await rate(b, 'Gut')
+  // B trägt eine weitere Prüfung ein, A übernimmt den Stand
+  await createExam(b, 'Thermodynamik')
   await b.goto('./#/einstellungen')
   await b.getByRole('button', { name: 'Jetzt abgleichen' }).click()
   await expect(b.getByText(/Zuletzt abgeglichen/)).toBeVisible()
   await a.getByRole('button', { name: 'Jetzt abgleichen' }).click()
-  await expect.poll(() => countRows(a, 'reviews')).toBe(3)
+  await expect.poll(() => countRows(a, 'exams')).toBe(2)
 
   // Ohne Änderungen fragt der Abgleich nur die Dateiversion ab
   await expect(a.getByRole('button', { name: 'Jetzt abgleichen' })).toBeEnabled()

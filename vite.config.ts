@@ -21,11 +21,11 @@ export default defineConfig({
     VitePWA({
       // Updates nie mitten in einer Sitzung aktivieren – siehe src/lib/appUpdate.ts
       registerType: 'prompt',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'beispiel-paket.json'],
+      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Lernapp',
         short_name: 'Lernapp',
-        description: 'Prüfungsvorbereitung mit Spaced Repetition',
+        description: 'Studien-Organizer: Stundenplan, Noten, Termine und Hausaufgaben',
         lang: 'de',
         theme_color: '#f5f5f7',
         background_color: '#f5f5f7',

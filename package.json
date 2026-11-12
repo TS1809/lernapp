@@ -1,7 +1,7 @@
 {
   "name": "lernapp",
   "private": true,
-  "version": "1.45.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,8 +9,6 @@
     "preview": "vite preview",
     "test": "vitest run",
     "icons": "node scripts/icons.mjs",
-    "validate": "node scripts/validate-paket.ts",
-    "sammlung": "node scripts/build-sammlung.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

@@ -3,25 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useActive } from '../state'
 import { db, MAX_EXAMS_PER_SEMESTER } from '../lib/db'
 import { daysUntil, formatCountdown, formatDate } from '../lib/dates'
-import { examStats } from '../lib/stats'
-import { loadStudyData } from '../lib/study'
-import { PageHeader, Progress, pct } from '../components/ui'
-import { OrderButton, OrderSteps } from '../components/OrderButton'
+import { PageHeader } from '../components/ui'
 
 export function Exams() {
-  const { profile, semester } = useActive()
-  const rows = useLiveQuery(async () => {
-    const exams = (await db.exams.where('semesterId').equals(semester.id).toArray()).sort((a, b) => a.date.localeCompare(b.date))
-    const now = Date.now()
-    const { plan } = await loadStudyData(profile, now)
-    return Promise.all(
-      exams.map(async (e) => ({
-        exam: e,
-        stats: examStats(e, await db.cards.where('[examId+archived]').equals([e.id, 0]).toArray(), now, profile.retention),
-        forecast: plan.exams.find((p) => p.examId === e.id)?.forecastShare,
-      })),
-    )
-  }, [semester.id, profile])
+  const { semester } = useActive()
+  const rows = useLiveQuery(
+    async () => (await db.exams.where('semesterId').equals(semester.id).toArray()).sort((a, b) => a.date.localeCompare(b.date)),
+    [semester.id],
+  )
   if (!rows) return null
   const full = rows.length >= MAX_EXAMS_PER_SEMESTER
 
@@ -43,43 +32,21 @@ export function Exams() {
           <p className="muted">Noch keine Prüfungen in diesem Semester.</p>
         </div>
       )}
-      {rows.map(({ exam: e, stats, forecast }) => {
+      {rows.map((e) => {
         const d = daysUntil(e.date)
         return (
           <Link key={e.id} to={`/pruefung/${e.id}`} className="card link" style={d < 0 ? { opacity: 0.6 } : undefined}>
-            <div className="row between" style={{ marginBottom: 4 }}>
+            <div className="row between">
               <span className="row grow">
                 <span className="dot" style={{ background: e.color }} />
                 <b>{e.name}</b>
               </span>
               <span className="chip">{formatCountdown(d)}</span>
             </div>
-            <small>{formatDate(e.date)} · {stats.total} Karten{stats.tasks.total > 0 && ` · ${stats.tasks.practiced}/${stats.tasks.total} Aufgaben geübt`}</small>
-            <div style={{ marginTop: 10 }}>
-              <Progress value={stats.total ? stats.introduced / stats.total : 0} color={e.color} />
-            </div>
-            <div className="row between" style={{ marginTop: 6 }}>
-              <small>begonnen {pct(stats.introduced, stats.total)}</small>
-              <small>
-                {forecast !== undefined ? `Prognose ${Math.round(forecast * profile.retention * 100)} %${e.ongoing ? ' (vorläufig)' : ''}` : `sicher zur Klausur ${pct(stats.secure, stats.total)}`}
-              </small>
-            </div>
+            <small>{formatDate(e.date)}{e.ongoing ? ' · läuft noch' : ''}</small>
           </Link>
         )
       })}
-      <Link className="btn block" to="/import" style={{ marginTop: 8 }}>Karten importieren</Link>
-      {rows.length > 0 && (
-        <>
-          <div className="section-title">Karten mit Claude erstellen</div>
-          <div className="card stack">
-            <p className="muted" style={{ margin: 0, fontSize: 14 }}>
-              Ein Auftrag für alle Prüfungen dieses Semesters – für neue Unterlagen (auch nur für ein Fach: einfach die PDFs anhängen und dazuschreiben, wofür), offene Meldungen zu Karten oder zu Semesterbeginn für alle Fachprofile. Claude bearbeitet nur die Fächer, für die etwas zu tun ist, und schickt eine Datei zurück, die du unter „Karten importieren“ einliest.
-            </p>
-            <OrderButton exams={rows.map((r) => r.exam)} semester={semester} label="Auftrag für Claude kopieren" />
-            <OrderSteps />
-          </div>
-        </>
-      )}
     </>
   )
 }

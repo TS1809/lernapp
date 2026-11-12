@@ -1,17 +1,15 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
 import { applyUpdate, isBusyRoute, useUpdateAvailable } from '../lib/appUpdate'
 import { createBackup, markBackup } from '../lib/backup'
 import { db } from '../lib/db'
-import { safeFileName, saveFile } from '../lib/packages'
+import { safeFileName, saveFile } from '../lib/files'
 import { isoDate } from '../lib/dates'
 import { readStored } from '../state'
 
-/** Hinweis auf eine neue Version – nicht während Lernsitzung oder Probeklausur. */
+/** Hinweis auf eine neue Version. */
 export function UpdateBanner() {
   const available = useUpdateAvailable()
-  const { pathname } = useLocation()
-  if (!available || isBusyRoute(`#${pathname}`)) return null
+  if (!available || isBusyRoute()) return null
   return (
     <div className="notice row between" role="status">
       <span>Neue Version verfügbar.</span>

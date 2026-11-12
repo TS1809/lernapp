@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useActive } from '../state'
 import { db, type Exam, type Homework } from '../lib/db'
 import { addDays, daysUntil, formatDate, isoDate } from '../lib/dates'
-import { completeHomework, deleteHomework, imageToDataUrl, isDueSoon, keepAsTask, reopenHomework, saveHomework, sortOpen } from '../lib/homework'
+import { completeHomework, deleteHomework, imageToDataUrl, isDueSoon, reopenHomework, saveHomework, sortOpen } from '../lib/homework'
 import { deleteCourseHomework, getCourseConfig, shareHomework, syncCourse } from '../lib/course'
 import { Rich } from '../components/Rich'
 import { PageHeader } from '../components/ui'
@@ -229,12 +229,9 @@ export function HomeworkForm() {
   )
 }
 
-/**
- * Bearbeiten und Abhaken einer Hausaufgabe – auf der eigenen Seite und in der Schreibtisch-Sitzung.
- * Nach dem Abhaken wird gefragt, ob sie als Übungsaufgabe in die Wiederholung soll.
- */
+/** Bearbeiten und Abhaken einer Hausaufgabe – mit optionaler Lösung zum Nachschlagen. */
 export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exam?: Exam; onFinished?: () => void; onSkip?: () => void }) {
-  const [step, setStep] = useState<'work' | 'solution' | 'keep'>(h.doneAt && !h.keptAt ? 'keep' : 'work')
+  const [step, setStep] = useState<'work' | 'solution'>('work')
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState<string>()
   const [busy, setBusy] = useState(false)
@@ -243,15 +240,6 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
     setBusy(true)
     try {
       await completeHomework(h, { text: note.trim(), image: photo })
-      setStep('keep')
-    } finally {
-      setBusy(false)
-    }
-  }
-  async function keep(yes: boolean) {
-    setBusy(true)
-    try {
-      if (yes && exam) await keepAsTask({ ...h, solution: note.trim() || h.solution, solutionImage: photo ?? h.solutionImage }, exam)
       onFinished?.()
     } finally {
       setBusy(false)
@@ -294,7 +282,7 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
       {step === 'solution' && (
         <div className="card stack">
           <b>Abhaken</b>
-          <p className="muted" style={{ margin: 0, fontSize: 15 }}>Optional: Lösung notieren oder fotografieren – praktisch, wenn du die Aufgabe später als Übung wiederholst.</p>
+          <p className="muted" style={{ margin: 0, fontSize: 15 }}>Optional: Lösung notieren oder fotografieren – praktisch zum Nachschlagen.</p>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ergebnis oder Notizen (optional)" style={{ minHeight: 90 }} />
           {photo && <img className="card-image" src={photo} alt="Deine Lösung" />}
           <label className="btn small">
@@ -304,17 +292,6 @@ export function HomeworkWork({ h, exam, onFinished, onSkip }: { h: Homework; exa
           <div className="row">
             <button className="btn grow" onClick={() => setStep('work')}>Zurück</button>
             <button className="btn primary grow" onClick={finish} disabled={busy}>Erledigt</button>
-          </div>
-        </div>
-      )}
-
-      {step === 'keep' && (
-        <div className="card stack">
-          <b>Als Übungsaufgabe behalten?</b>
-          <p className="muted" style={{ margin: 0, fontSize: 15 }}>Dann kommt sie zur Klausurvorbereitung wie eine Schreibtischaufgabe wieder dran – mit deiner Lösung zum Vergleich.</p>
-          <div className="row">
-            <button className="btn grow" onClick={() => keep(false)} disabled={busy}>Nein</button>
-            <button className="btn primary grow" onClick={() => keep(true)} disabled={busy || !exam}>Ja, behalten</button>
           </div>
         </div>
       )}
@@ -402,7 +379,6 @@ export function HomeworkPage() {
       {h.doneAt && (
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn grow" onClick={() => reopenHomework(h)}>Wieder öffnen</button>
-          {h.keptAt && <span className="muted grow" style={{ alignSelf: 'center', fontSize: 14 }}>Als Übungsaufgabe übernommen</span>}
         </div>
       )}
       {msg && <p className="badge-warn" style={{ marginTop: 12 }}>{msg}</p>}
@@ -420,7 +396,7 @@ export function HomeworkPage() {
           className="btn block ghost danger"
           style={{ marginTop: 12 }}
           onClick={async () => {
-            if (!confirm('Hausaufgabe löschen? Eine bereits übernommene Übungsaufgabe bleibt erhalten.')) return
+            if (!confirm('Hausaufgabe löschen?')) return
             await deleteHomework(h)
             navigate('/hausaufgaben', { replace: true })
           }}
