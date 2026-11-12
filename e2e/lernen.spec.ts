@@ -13,7 +13,7 @@ test('Einrichten, Lernen, Rechenaufgabe prüfen und Karte melden', async ({ page
   await page.goto('./#/')
   await expect(page.getByRole('link', { name: 'Unterwegs lernen' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Schreibtisch lernen' })).toBeVisible()
-  await expect(page.locator('.widget', { hasText: 'Fortschritt' })).toContainText('Prognose')
+  await expect(page.locator('.widget', { hasText: 'Nächste Klausuren' })).toContainText('Technische Mechanik')
 
   // Karteikarte lernen und melden
   await page.getByRole('link', { name: 'Unterwegs lernen' }).click()

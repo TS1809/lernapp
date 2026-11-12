@@ -201,14 +201,6 @@ section.widget:active { transform: none; }
 .w-legend { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 16px; }
 .w-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .w-list { display: flex; flex-direction: column; gap: 14px; }
-.w-progress-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
-.w-progress-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
-.w-progress-legend b { margin-left: auto; color: var(--text); font-weight: 600; }
-.w-exam-bar { display: flex; align-items: center; gap: 10px; }
-.w-exam-track { position: relative; flex: 1; }
-.w-forecast { position: absolute; top: -3px; width: 3px; height: 12px; margin-left: -1.5px; border-radius: 2px; background: var(--ok); }
-.w-exam-nums { flex-shrink: 0; font-variant-numeric: tabular-nums; color: var(--muted); }
-.w-exam-nums .ok { color: var(--ok); font-weight: 600; }
 .w-list-item { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 500; }
 .daybars { display: flex; gap: 4px; margin-top: auto; height: 38px; }
 .daybar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }

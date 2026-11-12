@@ -2,10 +2,10 @@ import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useActive } from '../state'
 import { loadStudyData, updateSnapshots } from '../lib/study'
-import { addDays, formatCountdown, isoDate, studyDate, studyDayStart } from '../lib/dates'
+import { addDays, daysUntil, formatCountdown, formatDate, isoDate, studyDate, studyDayStart } from '../lib/dates'
 import { cardMode, type Mode } from '../lib/db'
-import { examStats, materialByExam, streak } from '../lib/stats'
-import { DayBars, Icon, PageHeader, Progress, Widget } from '../components/ui'
+import { materialByExam, streak } from '../lib/stats'
+import { DayBars, Icon, PageHeader, Widget } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { subjectsToday } from '../lib/planner'
 import { homeworkDueByExam, isDueSoon } from '../lib/homework'
@@ -29,9 +29,8 @@ export const MODE_INFO: Record<Mode, { title: string; unit: string; one: string;
   desk: { title: 'Schreibtisch', unit: 'Aufgaben', one: 'Aufgabe', extra: 1 },
 }
 
-/** So viele Prüfungen passen in das Fortschritts-Widget. */
-const MAX_PROGRESS_ROWS = 5
-const pctOf = (a: number, b: number) => `${b ? Math.round((a / b) * 100) : 0} %`
+/** So viele Klausuren passen in die „Nächste Klausuren“-Kachel. */
+const MAX_EXAM_ROWS = 5
 
 /** Startseite im Stil des iPadOS-Homescreens: Widgets führen zu den einzelnen Bereichen. */
 export function Dashboard() {
@@ -83,20 +82,19 @@ export function Dashboard() {
   const doneToday = rem ? rem.reminders.filter((r) => r.doneAt && studyDate(r.doneAt) === studyDate(now)) : []
   const reminderRows = [...dueReminders, ...doneToday]
 
-  // Gesamtfortschritt über alle anstehenden Prüfungen
-  let total = 0
-  let introduced = 0
-  let forecast = 0
-  const perExam = new Map(
-    upcoming.map((e) => {
-      const st = examStats(e, cards.filter((c) => c.examId === e.id), now, profile.retention)
-      total += st.total
-      introduced += st.introduced
-      // Prognose: erwartet abrufbarer Anteil am Klausurtag, wenn dem Plan gefolgt wird
-      forecast += (plan.exams.find((p) => p.examId === e.id)?.forecastShare ?? 0) * profile.retention * st.total
-      return [e.id, st]
-    }),
-  )
+  // Nächste Klausuren: nur die aktuelle Prüfungsphase. Beim Import aus dem
+  // Stundenplan landen alle Klausuren im aktiven Semester; ein späteres Semester
+  // liegt zeitlich weit entfernt (große Lücke) und bleibt hier außen vor.
+  const nextExams = (() => {
+    const future = exams.filter((e) => e.date && daysUntil(e.date, now) >= 0).sort((a, b) => a.date.localeCompare(b.date))
+    const phase: typeof future = []
+    for (const e of future) {
+      const prev = phase[phase.length - 1]
+      if (prev && daysUntil(e.date, now) - daysUntil(prev.date, now) > 90) break
+      phase.push(e)
+    }
+    return phase
+  })()
 
   // Gelernte Karten der letzten 7 Tage
   const today = studyDayStart(now)
@@ -297,47 +295,25 @@ export function Dashboard() {
           </Widget>
         )}
 
-        {upcoming.length > 0 && (
-          <Widget size={upcoming.length > 1 ? 'large' : 'medium'} to="/pruefungen" title="Fortschritt" icon="chart" label="Fortschritt der Prüfungen">
-            <div className="w-progress-legend">
-              <span><i style={{ background: 'var(--text)' }} />begonnen</span>
-              <span><i style={{ background: 'var(--ok)' }} />Prognose am Klausurtag{upcoming.some((e) => e.ongoing) && ' (vorläufig)'}</span>
-              {total > 0 && <b>Gesamt {pctOf(introduced, total)} · {pctOf(forecast, total)}</b>}
-            </div>
+        {nextExams.length > 0 && (
+          <Widget size={nextExams.length > 1 ? 'large' : 'medium'} to="/pruefungen" title="Nächste Klausuren" icon="clock" label="Nächste Klausuren">
             <div className="w-list">
-              {upcoming.slice(0, MAX_PROGRESS_ROWS).map((e) => {
-                const st = perExam.get(e.id)!
-                const p = plan.exams.find((x) => x.examId === e.id)!
-                const started = st.total ? st.introduced / st.total : 0
-                const expected = p.forecastShare * profile.retention
+              {nextExams.slice(0, MAX_EXAM_ROWS).map((e) => {
+                const d = daysUntil(e.date, now)
                 return (
-                  <div key={e.id} className="w-list-item" aria-label={`${e.name}: ${pctOf(started, 1)} begonnen, Prognose ${pctOf(expected, 1)}`}>
+                  <div key={e.id} className="w-list-item" aria-label={`${e.name}: ${formatCountdown(d)}`}>
                     <div className="row between">
                       <span className="row grow" style={{ gap: 8, minWidth: 0 }}>
                         <span className="dot" style={{ background: e.color }} />
                         <span className="truncate">{e.name}</span>
                       </span>
-                      <small className={p.behind && st.total ? 'badge-warn' : ''}>{p.behind && st.total ? 'Rückstand · ' : ''}{formatCountdown(p.daysLeft)}</small>
+                      <small className={d <= 7 ? 'badge-warn' : ''}>{formatCountdown(d)}</small>
                     </div>
-                    {st.total ? (
-                      <div className="w-exam-bar">
-                        <div className="w-exam-track">
-                          <Progress value={started} color={e.color} />
-                          <span className="w-forecast" style={{ left: `${Math.min(100, expected * 100)}%` }} />
-                        </div>
-                        <small className="w-exam-nums">{pctOf(started, 1)} · <span className="ok">{pctOf(expected, 1)}</span></small>
-                      </div>
-                    ) : null}
-                    {st.total > 0 && upcoming.length <= 3 && (
-                      <small className="muted">{st.introduced} von {st.total} Karten begonnen · {st.secure} sicher bis zur Klausur{st.tasks.total > 0 && ` · ${st.tasks.practiced}/${st.tasks.total} Aufgaben`}</small>
-                    )}
-                    {!st.total && (
-                      <small className="muted">Noch keine Karten</small>
-                    )}
+                    <small className="muted">{formatDate(e.date)}{e.ongoing ? ' · läuft noch' : ''}</small>
                   </div>
                 )
               })}
-              {upcoming.length > MAX_PROGRESS_ROWS && <small>+ {upcoming.length - MAX_PROGRESS_ROWS} weitere</small>}
+              {nextExams.length > MAX_EXAM_ROWS && <small>+ {nextExams.length - MAX_EXAM_ROWS} weitere</small>}
             </div>
           </Widget>
         )}
